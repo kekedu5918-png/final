@@ -421,7 +421,8 @@ function defaultState(){
     perfectSessions:0,classifDone:0,lastBgAt:null,
     lightMode:false,annalesDone:{},pfs:{},fs:{},badgeUiSeen:{},_badgeUiBackfill:false,
     printed:{},printDone:0,isPro:false,
-    oral:{done:{},scores:{}}
+    oral:{done:{},scores:{}},
+    milestones:{}
   };
 }
 let S=defaultState();
@@ -457,6 +458,7 @@ function loadState(){
     if(!S.printed)S.printed={};if(!S.printDone)S.printDone=0;
     if(S.isPro===undefined)S.isPro=S.user?.isPRO||false;
     if(!S.oral)S.oral={done:{},scores:{}};
+    if(!S.milestones)S.milestones={};
     loaded=true;
   }catch(e){console.warn('[OPJ v28] loadState:',e);}
   // Migration v29 → v30
@@ -542,6 +544,31 @@ const THEME28={
 function addXP(amount){
   const before=getGrade();
   S.user.xp+=amount;
+  /* ── Milestones XP ── */
+  const MILESTONES=[100,500,1000,2000,5000,10000];
+  if(!S.milestones)S.milestones={};
+  for(const ms of MILESTONES){
+    if(!S.milestones[ms]&&S.user.xp>=ms){
+      S.milestones[ms]=Date.now();
+      setTimeout(()=>{
+        try{if(typeof confetti==='function')confetti(true);}catch(e){}
+        try{
+          const ctx=new(window.AudioContext||window.webkitAudioContext)();
+          [[523,.05],[659,.15],[784,.25],[1047,.4]].forEach(([freq,t])=>{
+            const o=ctx.createOscillator(),g=ctx.createGain();
+            o.connect(g);g.connect(ctx.destination);
+            o.frequency.value=freq;
+            g.gain.setValueAtTime(.25,ctx.currentTime+t);
+            g.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+t+.4);
+            o.start(ctx.currentTime+t);
+            o.stop(ctx.currentTime+t+.5);
+          });
+        }catch(e){}
+        showToast('🏆 MILESTONE — '+ms.toLocaleString('fr-FR')+' XP débloqués !','ok');
+      },400);
+      break;
+    }
+  }
   const after=getGrade();
   if(after.min>before.min){
     setTimeout(()=>showLevelUpOverlay(after),300);
@@ -1706,6 +1733,7 @@ function renderCurrentQ(){
   const dots=Array.from({length:tot},(_,i)=>`<div class="q-dot ${i<S.qcm.idx?'done':i===S.qcm.idx?'cur':''}"></div>`).join('');
   const letters=['A','B','C','D'];
   const answered=S.qcm.answered;
+  const isFirstEver=(S.user.sessionsDone||0)===0&&S.qcm.idx===0;
   let html=`<div class="q-progress">${dots}</div>`;
   html+=`<div class="q-cat">${q.cat||'QCM'}</div>`;
   html+=`<div class="q-txt">${q.q}</div>`;
@@ -1715,12 +1743,13 @@ function renderCurrentQ(){
     let cls='q-opt';
     if(answered!==null){
       cls+=' disabled';
-      if(i===q.c)cls+=' correct';
-      else if(i===answered&&answered!==q.c)cls+=' wrong';
+      if(i===q.c){cls+=' correct q-opt--animate-correct';}
+      else if(i===answered&&answered!==q.c){cls+=' wrong q-opt--animate-wrong';}
     }
     html+=`<button class="${cls}" onclick="answerQ(${i})"><span class="q-letter">${letters[i]}</span>${eh(opt)}</button>`;
   });
   html+=`</div>`;
+  if(isFirstEver){html+=`<div class="swipe-hint" id="swipe-hint-el"><span>← Swiper pour passer après avoir répondu</span></div>`;}
   if(answered!==null&&q.expl){
     const ok=answered===q.c;
     html+=`<div class="q-expl"><div class="q-verdict ${ok?'ok':'ko'}">${ok?'✓ Correct !':'✗ Incorrect'}</div>${q.expl}</div>`;
@@ -1728,11 +1757,36 @@ function renderCurrentQ(){
   document.getElementById('qcm-body').innerHTML=html;
   const nw=document.getElementById('qcm-next-wrap');
   if(nw)nw.style.display=answered!==null?'block':'none';
+  /* ── Swipe gauche = question suivante ── */
+  const qBody=document.getElementById('qcm-body');
+  if(qBody){
+    const freshBody=qBody.cloneNode(true);
+    qBody.parentNode.replaceChild(freshBody,qBody);
+    let _tsX=0,_tsY=0;
+    freshBody.addEventListener('touchstart',e=>{
+      _tsX=e.touches[0].clientX;
+      _tsY=e.touches[0].clientY;
+    },{passive:true});
+    freshBody.addEventListener('touchend',e=>{
+      const dx=e.changedTouches[0].clientX-_tsX;
+      const dy=Math.abs(e.changedTouches[0].clientY-_tsY);
+      if(dx<-60&&dy<40&&S.qcm.answered!==null){nextQuestion();}
+    },{passive:true});
+  }
 }
 function answerQ(i){
   const q=S.qcm.queue[S.qcm.idx];if(!q||S.qcm.answered!==null)return;
   S.qcm.answered=i;
   const correct=i===q.c;
+  try {
+    if (correct) {
+      if (typeof AudioFX !== 'undefined' && AudioFX.correct) AudioFX.correct();
+      if (navigator.vibrate) navigator.vibrate(40);
+    } else {
+      if (typeof AudioFX !== 'undefined' && AudioFX.wrong) AudioFX.wrong();
+      if (navigator.vibrate) navigator.vibrate([40, 60, 40]);
+    }
+  } catch(e) {}
   if(!S.qcm.cards[q.id])S.qcm.cards[q.id]=FSRS.newCard();
   S.qcm.cards[q.id]=FSRS.review(S.qcm.cards[q.id],correct);
   if(correct){const xp=10+(q.diff||1)*5;S.qcm.stats.ok++;S.qcm.stats.xp+=xp;addXP(xp);haptic(40);}
@@ -1897,6 +1951,21 @@ function stopCRTimer(){
 function renderProfil(){
   const g=getGrade(),n=getNextGrade(),pct=getXPPct();
   const el=id=>document.getElementById(id);
+  /* ID Card */
+  const cardBadge=el('pr-card-badge');
+  const cardGrade=el('pr-card-grade');
+  const cardName=el('pr-card-name');
+  const cardXp=el('pr-card-xp');
+  const cardStreak=el('pr-card-streak');
+  const cardSess=el('pr-card-sessions');
+  const cardRecord=el('pr-card-record');
+  if(cardBadge)cardBadge.innerHTML=(typeof GRADE_SVGS!=='undefined'&&GRADE_SVGS[g.name])||g.icon;
+  if(cardGrade)cardGrade.textContent=g.name;
+  if(cardName)cardName.textContent=S.user.name||'Officier';
+  if(cardXp)cardXp.textContent=(S.user.xp||0).toLocaleString('fr-FR')+' XP';
+  if(cardStreak)cardStreak.textContent=S.user.streak||0;
+  if(cardSess)cardSess.textContent=S.user.sessionsDone||0;
+  if(cardRecord)cardRecord.textContent=S.user.streakRecord||0;
   if(el('pr-grade-ico'))el('pr-grade-ico').innerHTML=GRADE_SVGS[g.name]||g.icon;
   if(el('pr-name'))el('pr-name').textContent=eh(S.user.name);
   if(el('pr-grade'))el('pr-grade').textContent=g.name;
