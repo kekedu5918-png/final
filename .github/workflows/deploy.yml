@@ -1,0 +1,24 @@
+name: Deploy OPJ Elite
+on:
+  push:
+    branches: [main]
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Fix encodings
+        run: |
+          node scripts/fix-annales-encoding.js
+          node scripts/fix-chapters-encoding.js
+          node scripts/fix-printsheets-encoding.js
+          node scripts/fix-procedures-encoding.js
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./
+          exclude_assets: '.github,*.pdf,fix-*.js,*_github-raw_js.txt,node_modules,scripts'

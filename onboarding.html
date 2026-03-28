@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover,maximum-scale=1">
+<title>OPJ Elite</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg-0:#03050c;--bg-1:#070b15;--bg-2:#0c1220;--bg-3:#111827;--bg-4:#1c2539;
+  --accent:#1b6bff;--accent-l:#4d8fff;--accent-xl:#82b4ff;
+  --accent-glow:rgba(27,107,255,.20);
+  --gold:#c8921a;--gold-l:#e6af44;
+  --ok:#00c97a;--ok-bg:rgba(0,201,122,.10);
+  --err:#ff3d57;--err-bg:rgba(255,61,87,.10);
+  --warn:#ff8c42;--cyan:#00d4e8;
+  --t1:#e8eeff;--t2:#6b7fa3;--t3:#3a4a6b;
+  --brd:rgba(255,255,255,.055);--brd-l:rgba(255,255,255,.10);
+  --brd-acc:rgba(27,107,255,.35);--brd-gold:rgba(200,146,26,.30);
+  --r-s:8px;--r-m:12px;--r-l:16px;--r-xl:20px;--r-2xl:26px;
+  --tr:.16s cubic-bezier(.4,0,.2,1);--spring:.38s cubic-bezier(.34,1.56,.64,1);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:var(--bg-0);color:var(--t1)}
+body{font-family:'Inter',system-ui,sans-serif;min-height:100dvh;overflow-x:hidden;-webkit-font-smoothing:antialiased;display:flex;flex-direction:column}
+input,button{font-family:'Inter',system-ui,sans-serif}
+button{cursor:pointer;border:none;background:none}
+::-webkit-scrollbar{display:none}
+*{scrollbar-width:none}
+
+@keyframes pgIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+@keyframes scan{from{top:-1px}to{top:100%}}
+@keyframes popIn{from{transform:scale(.6);opacity:0}to{transform:scale(1);opacity:1}}
+@keyframes spin{to{transform:translateY(-50%) rotate(360deg)}}
+
+/* FOND TACTIQUE */
+.bg{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none}
+.bg::before{
+  content:'';position:absolute;inset:0;
+  background-image:linear-gradient(rgba(27,107,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(27,107,255,.04) 1px,transparent 1px);
+  background-size:38px 38px;
+  mask-image:radial-gradient(ellipse 90% 80% at 50% 100%,black 15%,transparent 68%);
+  -webkit-mask-image:radial-gradient(ellipse 90% 80% at 50% 100%,black 15%,transparent 68%);
+}
+.bg::after{
+  content:'';position:absolute;bottom:-18%;left:50%;transform:translateX(-50%);
+  width:600px;height:450px;
+  background:radial-gradient(ellipse,rgba(27,107,255,.10) 0%,transparent 65%);
+}
+.scanline{
+  position:absolute;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent 5%,rgba(27,107,255,.26) 30%,rgba(77,143,255,.38) 50%,rgba(27,107,255,.26) 70%,transparent 95%);
+  animation:scan 8s linear infinite;
+  box-shadow:0 0 8px rgba(27,107,255,.18);
+}
+.corner{position:absolute;width:14px;height:14px}
+.corner::before,.corner::after{content:'';position:absolute;background:var(--accent-xl);opacity:.4;border-radius:1px}
+.corner::before{width:1.5px;height:100%}
+.corner::after{width:100%;height:1.5px}
+.tl{top:12px;left:12px}.tr{top:12px;right:12px;transform:scaleX(-1)}
+.bl{bottom:12px;left:12px;transform:scaleY(-1)}.br{bottom:12px;right:12px;transform:scale(-1)}
+
+/* STRUCTURE */
+.shell{
+  position:relative;z-index:1;flex:1;display:flex;flex-direction:column;
+  max-width:390px;margin:0 auto;width:100%;
+  padding:max(32px,env(safe-area-inset-top)) 20px max(28px,env(safe-area-inset-bottom));
+}
+
+/* HEADER PILL */
+.hdr{display:flex;align-items:center;justify-content:center;margin-bottom:12px;animation:pgIn .5s var(--tr) both}
+.hdr-pill{
+  display:flex;align-items:center;gap:5px;padding:4px 11px;border-radius:20px;
+  background:rgba(27,107,255,.08);border:1px solid var(--brd-acc);
+  font-family:'JetBrains Mono',monospace;font-size:8px;font-weight:700;
+  color:var(--accent-xl);letter-spacing:.1em;text-transform:uppercase;
+}
+.hdr-pill::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--accent-l);box-shadow:0 0 5px var(--accent-l);animation:blink 2.4s ease infinite}
+
+/* BRAND */
+.brand{text-align:center;margin-bottom:26px;animation:pgIn .55s .07s var(--tr) both}
+.brand-logo{font-family:'Syne',system-ui,sans-serif;font-size:54px;font-weight:800;color:var(--t1);letter-spacing:-.04em;line-height:1;margin-bottom:6px}
+.brand-logo b{font-style:normal;background:linear-gradient(135deg,var(--accent-l),var(--cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.brand-rule{display:block;height:2px;margin:10px auto 0;width:155px;background:linear-gradient(90deg,transparent,var(--accent) 25%,var(--accent-l) 55%,var(--gold) 80%,transparent);border-radius:2px;opacity:.65;box-shadow:0 0 10px rgba(27,107,255,.28)}
+.brand-sub{font-size:12px;color:var(--t2);margin-top:12px;font-family:'JetBrains Mono',monospace;letter-spacing:.04em;line-height:1.6}
+.brand-sub strong{color:var(--gold-l);font-weight:700}
+
+/* KPIs */
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:16px}
+.kpi{background:rgba(0,0,0,.3);border:1px solid var(--brd);border-radius:var(--r-m);padding:9px 6px;text-align:center}
+.kpi-v{font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:700;color:var(--t1);line-height:1}
+.kpi-v.acc{color:var(--accent-xl)}.kpi-v.gld{color:var(--gold-l)}.kpi-v.grn{color:var(--ok)}
+.kpi-l{font-family:'JetBrains Mono',monospace;font-size:7.5px;color:var(--t3);margin-top:3px;text-transform:uppercase;letter-spacing:.07em}
+
+/* ONGLETS */
+.tabs{display:flex;gap:5px;margin-bottom:18px;animation:pgIn .5s .13s var(--tr) both}
+.tab{flex:1;padding:9px 12px;border-radius:20px;border:1px solid var(--brd);background:transparent;color:var(--t2);font-size:12px;font-weight:600;transition:all var(--tr);white-space:nowrap}
+.tab:active{transform:scale(.95)}
+.tab.on{background:linear-gradient(135deg,var(--accent),var(--accent-l));color:#fff;border-color:transparent;box-shadow:0 2px 12px rgba(27,107,255,.32)}
+
+/* FORM */
+.form-wrap{animation:pgIn .5s .19s var(--tr) both}
+.panel{display:none}
+.panel.on{display:block}
+
+.field{margin-bottom:13px}
+.flbl{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.12em;display:flex;align-items:center;gap:6px;margin-bottom:6px}
+.flbl::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--brd),transparent)}
+
+.finp-wrap{position:relative}
+.finp{
+  width:100%;background:var(--bg-2);border:1.5px solid var(--bg-4);
+  border-radius:var(--r-m);padding:12px 14px 12px 42px;
+  font-size:15px;color:var(--t1);outline:none;
+  transition:border-color var(--tr),box-shadow var(--tr),background var(--tr);
+  -webkit-appearance:none;appearance:none;
+}
+.finp::placeholder{color:var(--t3);font-size:13px}
+.finp:focus{border-color:var(--accent-l);background:var(--bg-3);box-shadow:0 0 0 3px var(--accent-glow)}
+.finp.err{border-color:var(--err);box-shadow:0 0 0 3px rgba(255,61,87,.12)}
+.finp:-webkit-autofill,.finp:-webkit-autofill:focus{
+  -webkit-box-shadow:0 0 0 50px var(--bg-3) inset !important;
+  -webkit-text-fill-color:var(--t1) !important;
+  border-color:var(--accent-l) !important;
+}
+.ficon{position:absolute;left:13px;top:50%;transform:translateY(-50%);font-size:14px;pointer-events:none;opacity:.4;transition:opacity var(--tr)}
+.finp-wrap:focus-within .ficon{opacity:.82}
+
+.ferr{font-family:'JetBrains Mono',monospace;font-size:9.5px;color:var(--err);margin-top:5px;display:none;letter-spacing:.04em}
+.ferr.on{display:block}
+
+.pw-wrap{display:none;margin-top:7px}
+.pw-track{height:3px;background:var(--bg-4);border-radius:100px;overflow:hidden}
+.pw-fill{height:100%;border-radius:100px;transition:width .3s,background .3s;width:0%}
+.pw-txt{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--t3);margin-top:4px;letter-spacing:.06em}
+
+/* BOUTONS */
+.btn-main{
+  width:100%;padding:13px;border-radius:var(--r-l);border:none;cursor:pointer;
+  background:linear-gradient(135deg,var(--accent),var(--accent-l));
+  color:#fff;font-weight:800;font-size:14px;
+  display:flex;align-items:center;justify-content:center;gap:7px;
+  box-shadow:0 3px 0 rgba(13,50,180,.65),0 6px 20px rgba(27,107,255,.22);
+  transition:transform .12s,box-shadow .12s;
+  position:relative;overflow:hidden;margin-top:10px;
+}
+.btn-main::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.13),transparent 55%);pointer-events:none}
+.btn-main:active{transform:translateY(3px);box-shadow:0 1px 0 rgba(13,50,180,.65)}
+.btn-main.loading{pointer-events:none;opacity:.72}
+.btn-main.loading::before{
+  content:'';position:absolute;right:16px;top:50%;
+  transform:translateY(-50%);width:14px;height:14px;border-radius:50%;
+  border:2px solid rgba(255,255,255,.3);border-top-color:#fff;
+  animation:spin .65s linear infinite;
+}
+.btn-main.loading .btn-label{margin-right:22px}
+
+.btn-sec{
+  width:100%;padding:12px;border-radius:var(--r-l);cursor:pointer;
+  border:1px solid var(--brd-l);background:rgba(255,255,255,.04);
+  color:var(--t1);font-weight:700;font-size:13px;
+  display:flex;align-items:center;justify-content:center;gap:7px;
+  transition:all var(--tr);margin-top:8px;box-shadow:0 3px 0 rgba(0,0,0,.28);
+}
+.btn-sec:active{background:rgba(255,255,255,.08);transform:translateY(3px);box-shadow:0 1px 0 rgba(0,0,0,.28)}
+
+.btn-offline{
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  width:100%;padding:11px;background:none;border:none;cursor:pointer;
+  color:var(--t3);font-family:'JetBrains Mono',monospace;
+  font-size:10px;font-weight:600;letter-spacing:.07em;
+  margin-top:14px;transition:color var(--tr);
+}
+.btn-offline::before,.btn-offline::after{content:'';flex:1;height:1px;background:var(--brd)}
+.btn-offline:active{color:var(--t1)}
+
+/* MAGIC LINK */
+.magic{
+  display:flex;align-items:center;gap:12px;padding:12px 14px;
+  background:var(--bg-1);border:1px solid var(--brd);border-radius:var(--r-xl);
+  cursor:pointer;transition:border-color var(--tr),background var(--tr);
+}
+.magic:active{background:var(--bg-2);border-color:var(--brd-l)}
+.magic-ico{
+  width:38px;height:38px;border-radius:11px;flex-shrink:0;
+  background:rgba(27,107,255,.12);border:1px solid var(--brd-acc);
+  display:flex;align-items:center;justify-content:center;font-size:17px;
+}
+.magic-inf{flex:1}
+.magic-title{font-size:13px;font-weight:600;color:var(--t1)}
+.magic-sub{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--t3);margin-top:2px;letter-spacing:.04em}
+.magic-arr{font-size:18px;color:var(--t3)}
+
+.sep{display:flex;align-items:center;gap:8px;margin:12px 0}
+.sep span{font-family:'JetBrains Mono',monospace;font-size:8.5px;color:var(--t3);letter-spacing:.1em;flex-shrink:0}
+.sep::before,.sep::after{content:'';flex:1;height:1px;background:var(--brd)}
+
+/* TOAST */
+.toast-zone{
+  position:fixed;bottom:calc(env(safe-area-inset-bottom,0px) + 18px);
+  left:50%;transform:translateX(-50%);z-index:999;pointer-events:none;
+  display:flex;flex-direction:column;align-items:center;gap:6px;
+  width:calc(100% - 32px);max-width:370px;
+}
+.toast{
+  background:var(--bg-2);border:1px solid var(--brd-l);border-radius:var(--r-xl);
+  padding:11px 17px;font-size:13px;font-weight:700;color:var(--t1);
+  box-shadow:0 8px 32px rgba(0,0,0,.55);white-space:nowrap;backdrop-filter:blur(12px);
+  animation:toastIn .25s var(--spring) both,toastOut .3s var(--tr) 2.8s both;
+  display:flex;align-items:center;gap:7px;width:100%;
+}
+.toast.ok{border-color:rgba(0,201,122,.28);color:var(--ok)}
+.toast.err{border-color:rgba(255,61,87,.28);color:var(--err)}
+.toast.warn{border-color:rgba(255,140,66,.24);color:var(--warn)}
+@keyframes toastIn{from{opacity:0;transform:translateY(7px) scale(.95)}to{opacity:1;transform:none}}
+@keyframes toastOut{to{opacity:0;transform:translateY(7px)}}
+
+/* FOOTER */
+.footer{
+  margin-top:auto;padding-top:18px;text-align:center;
+  font-family:'JetBrains Mono',monospace;font-size:8.5px;color:var(--t3);
+  letter-spacing:.08em;text-transform:uppercase;animation:pgIn .5s .35s var(--tr) both;
+}
+
+/* SUCCÈS */
+.success-ov{
+  display:none;position:fixed;inset:0;z-index:200;background:var(--bg-0);
+  flex-direction:column;align-items:center;justify-content:center;
+  padding:32px;text-align:center;
+}
+.success-ov.on{display:flex;animation:pgIn .35s var(--spring) both}
+.success-ring{position:relative;margin-bottom:22px;animation:popIn .5s var(--spring) .05s both}
+.success-ring svg{transform:rotate(-90deg)}
+.success-ring-em{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:34px}
+.success-grade{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;color:var(--gold-l);letter-spacing:.14em;text-transform:uppercase;margin-bottom:6px;animation:pgIn .4s .14s var(--tr) both}
+.success-name{font-family:'Syne',system-ui,sans-serif;font-size:28px;font-weight:800;color:var(--t1);letter-spacing:-.03em;margin-bottom:5px;animation:pgIn .4s .17s var(--tr) both}
+.success-name span{color:var(--accent-l)}
+.success-sub{font-size:13px;color:var(--t2);line-height:1.6;animation:pgIn .4s .21s var(--tr) both}
+.success-bar-wrap{width:200px;height:3.5px;background:rgba(255,255,255,.06);border-radius:100px;overflow:hidden;margin:24px auto 0;animation:pgIn .4s .27s var(--tr) both}
+.success-bar{height:100%;width:0%;border-radius:100px;background:linear-gradient(90deg,var(--accent),var(--accent-l),var(--cyan));box-shadow:0 0 8px rgba(77,143,255,.45);transition:width 1.8s cubic-bezier(.4,0,.2,1)}
+</style>
+</head>
+<body>
+
+<div class="bg">
+  <div class="scanline"></div>
+  <div class="corner tl"></div><div class="corner tr"></div>
+  <div class="corner bl"></div><div class="corner br"></div>
+</div>
+
+<div class="shell" id="main-shell">
+
+  <div class="hdr">
+    <div class="hdr-pill">Préparation Examen OPJ</div>
+  </div>
+
+  <div class="brand">
+    <div class="brand-logo">OPJ <b>Elite</b></div>
+    <span class="brand-rule"></span>
+    <div class="brand-sub">La référence <strong>#1</strong> pour l'examen<br>d'Officier de Police Judiciaire</div>
+    <div class="kpis">
+      <div class="kpi"><div class="kpi-v acc">160+</div><div class="kpi-l">Questions</div></div>
+      <div class="kpi"><div class="kpi-v">13</div><div class="kpi-l">Chapitres</div></div>
+      <div class="kpi"><div class="kpi-v gld">FSRS</div><div class="kpi-l">IA Active</div></div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab on" id="tab-connexion"   onclick="switchTab('connexion')">Connexion</button>
+    <button class="tab"    id="tab-inscription"  onclick="switchTab('inscription')">Inscription</button>
+  </div>
+
+  <div class="form-wrap">
+
+    <!-- CONNEXION -->
+    <div class="panel on" id="panel-connexion">
+      <div class="field">
+        <div class="flbl">Email</div>
+        <div class="finp-wrap">
+          <input type="email" id="login-email" class="finp" placeholder="votre@email.fr" autocomplete="email"
+            oninput="clearErr(this)" onkeydown="if(event.key==='Enter')document.getElementById('login-password').focus()">
+          <span class="ficon">✉️</span>
+        </div>
+        <div class="ferr" id="err-le">Email invalide</div>
+      </div>
+      <div class="field">
+        <div class="flbl">Mot de passe</div>
+        <div class="finp-wrap">
+          <input type="password" id="login-password" class="finp" placeholder="••••••••" autocomplete="current-password"
+            oninput="clearErr(this)" onkeydown="if(event.key==='Enter')doLogin()">
+          <span class="ficon">🔑</span>
+        </div>
+        <div class="ferr" id="err-lp">Mot de passe requis</div>
+      </div>
+      <button class="btn-main" id="btn-login" onclick="doLogin()"><span class="btn-label">🎯 Accéder à ma formation</span></button>
+      <div class="sep"><span>ou</span></div>
+      <div class="magic" onclick="doMagicLink()">
+        <div class="magic-ico">⚡</div>
+        <div class="magic-inf">
+          <div class="magic-title">Lien magique</div>
+          <div class="magic-sub">Connexion sans mot de passe · par email</div>
+        </div>
+        <div class="magic-arr">›</div>
+      </div>
+      <button class="btn-offline" onclick="doOffline()">Continuer sans compte</button>
+    </div>
+
+    <!-- INSCRIPTION -->
+    <div class="panel" id="panel-inscription">
+      <div class="field">
+        <div class="flbl">Votre nom</div>
+        <div class="finp-wrap">
+          <input type="text" id="signup-name" class="finp" placeholder="Adjudant Martin" autocomplete="name">
+          <span class="ficon">👤</span>
+        </div>
+      </div>
+      <div class="field">
+        <div class="flbl">Email</div>
+        <div class="finp-wrap">
+          <input type="email" id="signup-email" class="finp" placeholder="votre@email.fr" autocomplete="email"
+            oninput="clearErr(this)">
+          <span class="ficon">✉️</span>
+        </div>
+        <div class="ferr" id="err-se">Email invalide</div>
+      </div>
+      <div class="field">
+        <div class="flbl">Mot de passe</div>
+        <div class="finp-wrap">
+          <input type="password" id="signup-password" class="finp" placeholder="min. 6 caractères" autocomplete="new-password"
+            oninput="clearErr(this);checkPw(this.value)" onkeydown="if(event.key==='Enter')doSignup()">
+          <span class="ficon">🔒</span>
+        </div>
+        <div class="ferr" id="err-sp">6 caractères minimum</div>
+        <div class="pw-wrap" id="pw-wrap">
+          <div class="pw-track"><div class="pw-fill" id="pw-fill"></div></div>
+          <div class="pw-txt" id="pw-txt"></div>
+        </div>
+      </div>
+      <div class="field">
+        <div class="flbl">Date de l'examen</div>
+        <div class="finp-wrap">
+          <input type="month" id="signup-date" class="finp" value="2026-06" min="2025-01">
+          <span class="ficon">📅</span>
+        </div>
+      </div>
+      <button class="btn-main" id="btn-signup" onclick="doSignup()"><span class="btn-label">🚀 Créer mon compte</span></button>
+      <button class="btn-offline" onclick="doOffline()">Continuer sans compte</button>
+    </div>
+
+  </div>
+
+  <div class="footer">OPJ Elite v52 &nbsp;·&nbsp; Données sécurisées &nbsp;·&nbsp; 🇫🇷 France</div>
+
+</div>
+
+<!-- SUCCÈS -->
+<div class="success-ov" id="success-ov">
+  <div class="success-ring">
+    <svg width="90" height="90" viewBox="0 0 90 90">
+      <circle cx="45" cy="45" r="36" fill="none" stroke="rgba(255,255,255,.06)" stroke-width="5"/>
+      <circle cx="45" cy="45" r="36" fill="none" stroke="url(#sg)" stroke-width="5"
+        stroke-linecap="round" stroke-dasharray="226.2" stroke-dashoffset="56.6"/>
+      <defs><linearGradient id="sg" x1="0%" y1="0%" x2="100%" y2="0%">
+        <stop offset="0%" stop-color="#1b6bff"/>
+        <stop offset="100%" stop-color="#4d8fff"/>
+      </linearGradient></defs>
+    </svg>
+    <div class="success-ring-em">⚖️</div>
+  </div>
+  <div class="success-grade">Gardien de la Paix · 0 XP</div>
+  <div class="success-name">Bienvenue, <span id="sname">Officier</span></div>
+  <div class="success-sub">Session ouverte.<br>Chargement de votre tableau de bord...</div>
+  <div class="success-bar-wrap"><div class="success-bar" id="success-bar"></div></div>
+</div>
+
+<div class="toast-zone" id="toast-zone"></div>
+
+<script>
+'use strict';
+
+function switchTab(t){
+  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('on'));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));
+  document.getElementById('tab-'+t).classList.add('on');
+  document.getElementById('panel-'+t).classList.add('on');
+}
+
+function showToast(msg,type){
+  const z=document.getElementById('toast-zone');
+  const d=document.createElement('div');
+  d.className='toast '+(type||'');
+  const ic={ok:'✅',err:'❌',warn:'⚠️'};
+  d.innerHTML='<span>'+(ic[type]||'ℹ️')+'</span><span>'+msg+'</span>';
+  z.appendChild(d);
+  setTimeout(()=>d.remove(),3200);
+}
+
+function clearErr(inp){
+  inp.classList.remove('err');
+  const s=inp.parentElement.nextElementSibling;
+  if(s&&s.classList.contains('ferr'))s.classList.remove('on');
+}
+function showErr(inpId,errId,msg){
+  const i=document.getElementById(inpId);
+  const e=document.getElementById(errId);
+  if(i)i.classList.add('err');
+  if(e){e.textContent=msg;e.classList.add('on');}
+  if(i)i.focus();
+}
+function isEmail(e){return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)}
+
+function checkPw(pw){
+  const w=document.getElementById('pw-wrap');
+  const f=document.getElementById('pw-fill');
+  const t=document.getElementById('pw-txt');
+  if(!pw){w.style.display='none';return;}
+  w.style.display='block';
+  let sc=0;
+  if(pw.length>=6)sc++;if(pw.length>=10)sc++;
+  if(/[A-Z]/.test(pw))sc++;if(/[0-9]/.test(pw))sc++;if(/[^a-zA-Z0-9]/.test(pw))sc++;
+  const lv=[
+    {w:'20%',c:'#ff3d57',t:'Faible'},
+    {w:'40%',c:'#ff8c42',t:'Moyen'},
+    {w:'60%',c:'#e6af44',t:'Correct'},
+    {w:'80%',c:'#00c97a',t:'Fort ✓'},
+    {w:'100%',c:'#00c97a',t:'Excellent ✓'}
+  ];
+  const v=lv[Math.min(sc-1,4)]||lv[0];
+  f.style.width=v.w;f.style.background=v.c;
+  t.textContent=v.t;t.style.color=v.c;
+}
+
+function setLoad(id,on){
+  const b=document.getElementById(id);
+  if(!b)return;
+  b.classList.toggle('loading',on);
+  b.disabled=on;
+}
+
+function showSuccess(name){
+  const el=document.getElementById('sname');
+  if(el)el.textContent=(name||'Officier').split(' ')[0];
+  document.getElementById('success-ov').classList.add('on');
+  setTimeout(()=>{
+    const bar=document.getElementById('success-bar');
+    if(bar)bar.style.width='100%';
+  },80);
+  setTimeout(()=>{
+    document.getElementById('success-ov').classList.remove('on');
+    if(typeof finishAuth==='function')finishAuth(name);
+    else if(typeof window._opjFinish==='function')window._opjFinish(name);
+    else window.location.href='./index.html';
+  },2300);
+}
+
+async function doLogin(){
+  const email=document.getElementById('login-email').value.trim();
+  const pass=document.getElementById('login-password').value;
+  if(!email||!isEmail(email)){showErr('login-email','err-le','Email invalide');return;}
+  if(!pass){showErr('login-password','err-lp','Mot de passe requis');return;}
+  setLoad('btn-login',true);
+  try{
+    if(typeof AUTH!=='undefined'&&AUTH.login){
+      const{data,error}=await AUTH.login(email,pass);
+      setLoad('btn-login',false);
+      if(error){
+        const m=(error.message||'').toLowerCase();
+        const f=m.includes('invalid')||m.includes('credentials')?'Email ou mot de passe incorrect'
+               :m.includes('confirm')?'Confirmez votre email d\'abord'
+               :error.message;
+        showToast(f,'err');
+        document.getElementById('login-password').classList.add('err');
+        return;
+      }
+      const n=data?.user?.user_metadata?.name||email.split('@')[0];
+      showToast('Connexion réussie !','ok');
+      setTimeout(()=>showSuccess(n),420);
+    }else{
+      await new Promise(r=>setTimeout(r,900));
+      setLoad('btn-login',false);
+      showToast('Connexion réussie !','ok');
+      setTimeout(()=>showSuccess(email.split('@')[0]),420);
+    }
+  }catch(e){setLoad('btn-login',false);showToast('Erreur — réessayez','err');console.error(e);}
+}
+
+async function doSignup(){
+  const name=document.getElementById('signup-name').value.trim()||'Officier';
+  const email=document.getElementById('signup-email').value.trim();
+  const pass=document.getElementById('signup-password').value;
+  const date=document.getElementById('signup-date').value||'2026-06';
+  if(!email||!isEmail(email)){showErr('signup-email','err-se','Email invalide');return;}
+  if(!pass||pass.length<6){showErr('signup-password','err-sp','6 caractères minimum');return;}
+  setLoad('btn-signup',true);
+  try{
+    if(typeof AUTH!=='undefined'&&AUTH.signup){
+      const{data,error}=await AUTH.signup(email,pass,name);
+      setLoad('btn-signup',false);
+      if(error){
+        const m=(error.message||'').toLowerCase();
+        const f=m.includes('already')?'Cet email est déjà utilisé — connectez-vous':error.message;
+        showToast(f,'err');return;
+      }
+      if(window.S){window.S.user.name=name;window.S.user.examDate=date;if(typeof save==='function')save();}
+      if(data?.session){showToast('Compte créé ! Bienvenue 🎯','ok');setTimeout(()=>showSuccess(name),420);}
+      else{showToast('Compte créé ! Vérifiez votre email.','ok');setTimeout(()=>switchTab('connexion'),1600);}
+    }else{
+      await new Promise(r=>setTimeout(r,900));
+      setLoad('btn-signup',false);
+      if(window.S){window.S.user.name=name;window.S.user.examDate=date;if(typeof save==='function')save();}
+      showToast('Compte créé !','ok');
+      setTimeout(()=>showSuccess(name),420);
+    }
+  }catch(e){setLoad('btn-signup',false);showToast('Erreur — réessayez','err');console.error(e);}
+}
+
+async function doMagicLink(){
+  const email=document.getElementById('login-email').value.trim();
+  if(!email||!isEmail(email)){
+    showToast('Entrez votre email d\'abord','warn');
+    document.getElementById('login-email').classList.add('err');
+    document.getElementById('login-email').focus();
+    return;
+  }
+  showToast('Envoi du lien...','');
+  try{
+    if(typeof AUTH!=='undefined'&&AUTH.magicLink){
+      const{error}=await AUTH.magicLink(email);
+      if(error){showToast(error.message,'err');return;}
+    }
+    showToast('Lien envoyé ! Vérifiez votre boîte.','ok');
+  }catch(e){showToast('Erreur d\'envoi','err');}
+}
+
+function doOffline(){
+  showToast('Mode hors-ligne activé','ok');
+  setTimeout(()=>_showSuccessAndNotify('Officier'),500);
+}
+
+/* Notifier le parent index.html via postMessage */
+function _showSuccessAndNotify(name){
+  showSuccess(name);
+  setTimeout(function(){
+    try{
+      if(window.parent&&window.parent!==window){
+        window.parent.postMessage({type:'auth',name:name},'*');
+      }
+    }catch(e){}
+  },2200);
+}
+
+/* Surcharger doLogin/doSignup pour notifier le parent */
+var _ologin=doLogin,_osignup=doSignup;
+async function doLoginWithBridge(){
+  await _ologin();
+  // notif gérée par showSuccess
+}
+async function doSignupWithBridge(){
+  await _osignup();
+}
+
+/* Surcharger showSuccess pour notifier le parent */
+var _origShowSuccess=showSuccess;
+window.showSuccess=function(name){
+  _origShowSuccess(name);
+  setTimeout(function(){
+    try{
+      if(window.parent&&window.parent!==window){
+        window.parent.postMessage({type:'auth',name:name},'*');
+      }
+    }catch(e){}
+  },2200);
+};
+
+/* Exposition */
+window.handleLogin=doLogin;
+window.handleSignup=doSignup;
+window.showAuthTab=switchTab;
+</script>
+</body>
+</html>
