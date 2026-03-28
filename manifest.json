@@ -1,0 +1,29 @@
+{
+  "name": "OPJ Elite — Officier de Police Judiciaire",
+  "short_name": "OPJ Elite",
+  "description": "La référence de préparation à l'examen OPJ — QCM, leçons, PV interactifs, spaced repetition.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "theme_color": "#060910",
+  "background_color": "#060910",
+  "lang": "fr",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "prefer_related_applications": false,
+  "categories": ["education", "productivity"],
+  "screenshots": []
+}

@@ -1,0 +1,3 @@
+# Stripe envoie des webhooks sans JWT Supabase — désactiver la vérif JWT pour cette fonction.
+[functions.stripe-webhook]
+verify_jwt = false
