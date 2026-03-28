@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════
-   OPJ ELITE — CSS Tokens v58
+   OPJ ELITE — CSS Tokens v59
    Source unique des variables de design (dark theme).
    Chargé AVANT components.css et pages.css.
    ═══════════════════════════════════════════════════════ */
@@ -41,7 +41,11 @@
   /* ── Couleurs secondaires ── */
   --cyan: #00d4e8;
   --violet: #7c3aed;
+  --violet-l: #a78bfa;
   --rose: #f43f5e;
+  --blitz-red: #cc2a40;
+  --blitz-green: #00a864;
+  --navy: #003087;
 
   /* ── Texte ── */
   --t1: #e8eeff;

@@ -7,7 +7,7 @@
    ═══════════════════════════════════════════════════════ */
 
 /* ─── VERSION ─── */
-const APP_VERSION='v58.0', STORAGE_KEY='opje_v58', STATE_VERSION=58;
+const APP_VERSION='v59.0', STORAGE_KEY='opje_v59', STATE_VERSION=59;
 
 /* ═══════════════════════════════════════════════════════════════════════════
    SUPABASE CONFIGURATION — Auth + Sync + Stripe Ready
@@ -432,51 +432,77 @@ let S=defaultState();
 function loadState(){
   let loaded=false;
   try{
-    const r=localStorage.getItem(STORAGE_KEY);if(!r)return;
-    const s=JSON.parse(r);
-    if(!s.v||s.v<STATE_VERSION){
-      // Migration douce : préserver XP et progression
-      const prev=s;S=defaultState();
-      if(prev.user)S.user={...S.user,...prev.user};
-      if(prev.lessons)S.lessons=prev.lessons;
-      if(prev.qcm?.cards)S.qcm.cards=prev.qcm.cards;
-      if(prev.fiches)S.fiches=prev.fiches;
-      if(prev.fs)S.fs=prev.fs;
-      if(prev.pfs)S.pfs=prev.pfs;
-      if(prev.printed)S.printed=prev.printed;
-      if(prev.printDone)S.printDone=prev.printDone;
-      if(prev.annalesDone)S.annalesDone=prev.annalesDone;
-      if(prev.oral)S.oral={...S.oral,...prev.oral};
-      if(prev.milestones)S.milestones=prev.milestones;
-      if(prev.errorLog)S.errorLog=prev.errorLog;
-      if(prev.placementDone)S.placementDone=prev.placementDone;
-      if(prev.placementScore)S.placementScore=prev.placementScore;
-      if(prev.badges)S.badges=prev.badges;
-      if(prev.activity)S.activity=prev.activity;
-      if(prev.missions2)S.missions2=prev.missions2;
-      S.isPro=prev.isPro||prev.user?.isPRO||false;
-      S.page='home';save();loaded=true;return;
+    const r=localStorage.getItem(STORAGE_KEY);
+    if(r){
+      const s=JSON.parse(r);
+      if(!s.v||s.v<STATE_VERSION){
+        const prev=s;S=defaultState();
+        if(prev.user)S.user={...S.user,...prev.user};
+        if(prev.lessons)S.lessons=prev.lessons;
+        if(prev.qcm?.cards)S.qcm.cards=prev.qcm.cards;
+        if(prev.fiches)S.fiches=prev.fiches;
+        if(prev.fs)S.fs=prev.fs;
+        if(prev.pfs)S.pfs=prev.pfs;
+        if(prev.printed)S.printed=prev.printed;
+        if(prev.printDone)S.printDone=prev.printDone;
+        if(prev.annalesDone)S.annalesDone=prev.annalesDone;
+        if(prev.oral)S.oral={...S.oral,...prev.oral};
+        if(prev.milestones)S.milestones=prev.milestones;
+        if(prev.errorLog)S.errorLog=prev.errorLog;
+        if(prev.placementDone)S.placementDone=prev.placementDone;
+        if(prev.placementScore)S.placementScore=prev.placementScore;
+        if(prev.badges)S.badges=prev.badges;
+        if(prev.activity)S.activity=prev.activity;
+        if(prev.missions2)S.missions2=prev.missions2;
+        S.isPro=prev.isPro||prev.user?.isPRO||false;
+        S.page='home';save();loaded=true;
+      } else {
+        S={...defaultState(),...s,page:'home'};
+        if(!S.badges)S.badges={};if(!S.badgeUiSeen)S.badgeUiSeen={};
+        if(!S._badgeUiBackfill){S._badgeUiBackfill=true;Object.keys(S.badges||{}).forEach(id=>{S.badgeUiSeen[id]=1;});try{save();}catch(e){}}
+        if(!S.shield)S.shield={count:1,lastEarned:null};
+        if(!S.activity)S.activity={};if(!S.defi)S.defi={lastDate:'',done:false};
+        if(!S.pfs)S.pfs={};if(!S.fs)S.fs={};if(!S.annalesDone)S.annalesDone={};
+        if(!S.printed)S.printed={};if(!S.printDone)S.printDone=0;
+        if(S.isPro===undefined)S.isPro=S.user?.isPRO||false;
+        if(!S.oral)S.oral={done:{},scores:{}};
+        if(!S.milestones)S.milestones={};
+        if(!S.placementDone)S.placementDone=false;
+        if(!S.placementScore)S.placementScore={};
+        if(!S.errorLog)S.errorLog={};
+        loaded=true;
+      }
     }
-    S={...defaultState(),...s,page:'home'};
-    // Assurer chaque clé v58
-    if(!S.badges)S.badges={};if(!S.badgeUiSeen)S.badgeUiSeen={};
-    if(!S._badgeUiBackfill){S._badgeUiBackfill=true;Object.keys(S.badges||{}).forEach(id=>{S.badgeUiSeen[id]=1;});try{save();}catch(e){}}
-    if(!S.shield)S.shield={count:1,lastEarned:null};
-    if(!S.activity)S.activity={};if(!S.defi)S.defi={lastDate:'',done:false};
-    if(!S.pfs)S.pfs={};if(!S.fs)S.fs={};if(!S.annalesDone)S.annalesDone={};
-    if(!S.printed)S.printed={};if(!S.printDone)S.printDone=0;
-    if(S.isPro===undefined)S.isPro=S.user?.isPRO||false;
-    if(!S.oral)S.oral={done:{},scores:{}};
-    if(!S.milestones)S.milestones={};
-    if(!S.placementDone)S.placementDone=false;
-    if(!S.placementScore)S.placementScore={};
-    if(!S.errorLog)S.errorLog={};
-    loaded=true;
-  }catch(e){console.warn('[OPJ v28] loadState:',e);}
-  if(!loaded){const old=localStorage.getItem('opje_v57')||localStorage.getItem('opje_v51')||localStorage.getItem('opje_v30')||localStorage.getItem('opj_v30')||localStorage.getItem('opje_v29')||localStorage.getItem('opj_v29');
-    if(old){try{const d=JSON.parse(old);S={...defaultState(),...d};save();}catch(e){}}
+  }catch(e){console.warn('[OPJ] loadState error:',e);}
+  if(!loaded){
+    const old=localStorage.getItem('opje_v58')||localStorage.getItem('opje_v57')||localStorage.getItem('opje_v51')||localStorage.getItem('opje_v30')||localStorage.getItem('opj_v30')||localStorage.getItem('opje_v29')||localStorage.getItem('opj_v29');
+    if(old){
+      try{
+        const d=JSON.parse(old);
+        S=defaultState();
+        if(d.user)S.user={...S.user,...d.user};
+        if(d.lessons)S.lessons=d.lessons;
+        if(d.qcm?.cards)S.qcm.cards=d.qcm.cards;
+        if(d.fiches)S.fiches=d.fiches;
+        if(d.fs)S.fs=d.fs;
+        if(d.pfs)S.pfs=d.pfs;
+        if(d.printed)S.printed=d.printed;
+        if(d.printDone)S.printDone=d.printDone;
+        if(d.annalesDone)S.annalesDone=d.annalesDone;
+        if(d.oral)S.oral={...S.oral,...d.oral};
+        if(d.milestones)S.milestones=d.milestones;
+        if(d.errorLog)S.errorLog=d.errorLog;
+        if(d.placementDone)S.placementDone=d.placementDone;
+        if(d.placementScore)S.placementScore=d.placementScore;
+        if(d.badges)S.badges=d.badges;
+        if(d.activity)S.activity=d.activity;
+        if(d.missions2)S.missions2=d.missions2;
+        S.isPro=d.isPro||d.user?.isPRO||false;
+        S.page='home';
+        save();
+      }catch(e){console.warn('[OPJ] migration error:',e);}
+    }
   }
-
 }
 let _saveQueued=false,_lastSave=0;
 function save(){
@@ -525,7 +551,7 @@ function showLevelUpOverlay(newGrade){
   ov.style.display='flex';
   ov.setAttribute('aria-hidden','false');
   document.body.style.overflow='hidden';
-  try{if(navigator.vibrate)navigator.vibrate(200);}catch(e){}
+  haptic(200);
   if(typeof confetti==='function')confetti(true);
   requestAnimationFrame(()=>{
     requestAnimationFrame(()=>{
@@ -850,7 +876,7 @@ function continueProgress(){
 }
 
 function tapContinueHome(){
-  try{if(navigator.vibrate)navigator.vibrate(14);}catch(e){}
+  haptic(14);
   const b=document.querySelector('.btn-continue-v2,.btn-continue');
   if(b){b.classList.add('btn-continue--tap');setTimeout(()=>b.classList.remove('btn-continue--tap'),320);}
   continueProgress();
@@ -946,13 +972,9 @@ function renderWeakWidget(){
     {cat:'INSTRUCTION',name:'Instruction',em:'🏛️'},
   ];
   const zones=THEMES_DEF.map(t=>{
-    const pool=QB.filter(q=>q.cat===t.cat);
-    if(!pool.length)return null;
-    const done=pool.filter(q=>S.qcm.cards[q.id]?.reps>0);
-    if(!done.length)return null;
-    const ok=done.filter(q=>(S.qcm.cards[q.id]?.ok||0)>0).length;
-    const pct=Math.round(ok/done.length*100);
-    return{...t,pct,done:done.length};
+    const m=computeMastery(t.cat);
+    if(!m.total||!m.done)return null;
+    return{...t,pct:m.mastery,done:m.done};
   }).filter(Boolean).filter(z=>z.pct<70).sort((a,b)=>a.pct-b.pct).slice(0,3);
   if(!zones.length){el.innerHTML='';el.style.display='none';return;}
   el.style.display='block';
@@ -1068,12 +1090,12 @@ function openLesson(id){
     </button>
     <button class="btn btn-ghost btn-full mt8" onclick="closeLesson()">Fermer</button>
   </div>`;
-  document.getElementById('lesson-modal-body').innerHTML=html;
-  document.getElementById('lesson-ov').classList.add('on');
+  const _lmb=document.getElementById('lesson-modal-body');if(_lmb)_lmb.innerHTML=html;
+  const _lov=document.getElementById('lesson-ov');if(_lov)_lov.classList.add('on');
   document.body.style.overflow='hidden';
 }
 function closeLesson(){
-  document.getElementById('lesson-ov').classList.remove('on');
+  const _lov=document.getElementById('lesson-ov');if(_lov)_lov.classList.remove('on');
   document.body.style.overflow='';
 }
 function markLessonDone(id){
@@ -1677,8 +1699,8 @@ function openFiche(id){
 
   h+=`<button class="btn btn-ghost btn-full" style="margin-top:16px" onclick="closeFiche()">Fermer</button>`;
 
-  document.getElementById('fiche-body').innerHTML=h;
-  document.getElementById('fiche-ov').style.display='flex';
+  const _fb=document.getElementById('fiche-body');if(_fb)_fb.innerHTML=h;
+  const _fo=document.getElementById('fiche-ov');if(_fo)_fo.style.display='flex';
   document.body.style.overflow='hidden';
 }
 
@@ -1717,8 +1739,18 @@ let _examTimer=null;
 function startSmartSession(){
   try{AudioFX.click();}catch(e){}
   S.qcm.sessionKind='smart';
+  const ps=S.placementDone&&S.placementScore?S.placementScore:{};
+  const hasPlacement=Object.keys(ps).length>0;
   const due=QB.filter(q=>FSRS.isDue(S.qcm.cards[q.id]));
-  const base=due.length>=10?due:[...QB].sort(()=>Math.random()-.5).slice(0,20);
+  let base=due.length>=10?due:[...QB].sort(()=>Math.random()-.5).slice(0,20);
+  if(hasPlacement){
+    const weakCats=Object.entries(ps).filter(([,v])=>v<50).map(([k])=>k);
+    if(weakCats.length){
+      const weakQ=base.filter(q=>weakCats.includes(q.cat));
+      const otherQ=base.filter(q=>!weakCats.includes(q.cat));
+      base=[...weakQ,...otherQ];
+    }
+  }
   const pool=_adaptiveSort(base);
   buildSession(pool.slice(0,10));
 }
@@ -1826,9 +1858,9 @@ function startErrorReview(){
 function _beginSession(queue,minutes){
   S.qcm.queue=queue.map(q=>shuffleQ({...q}));S.qcm.idx=0;S.qcm.answered=null;S.qcm.stats={ok:0,ko:0,xp:0};
   S.qcm.wrongs=[];S.qcm.startedAt=Date.now();S.qcm.examMinutes=minutes||0;
-  document.getElementById('qcm-session').style.display='block';
-  document.getElementById('qcm-results').style.display='none';
-  document.getElementById('rev-menu').style.display='none';
+  const _qs=document.getElementById('qcm-session');if(_qs)_qs.style.display='block';
+  const _qr=document.getElementById('qcm-results');if(_qr)_qr.style.display='none';
+  const _rm=document.getElementById('rev-menu');if(_rm)_rm.style.display='none';
   if(minutes>0)startExamBanner(minutes);
   renderCurrentQ();
   navigateTo('revision');
@@ -1887,7 +1919,7 @@ function renderCurrentQ(){
     const ok=answered===q.c;
     html+=`<div class="q-expl"><div class="q-verdict ${ok?'ok':'ko'}">${ok?'✓ Correct !':'✗ Incorrect'}</div>${eh(q.expl)}</div>`;
   }
-  document.getElementById('qcm-body').innerHTML=html;
+  const _qb=document.getElementById('qcm-body');if(_qb)_qb.innerHTML=html;
   const nw=document.getElementById('qcm-next-wrap');
   if(nw)nw.style.display=answered!==null?'block':'none';
   /* ── Swipe gauche = question suivante ── */
@@ -1914,10 +1946,8 @@ function answerQ(i){
   try {
     if (correct) {
       if (typeof AudioFX !== 'undefined' && AudioFX.correct) AudioFX.correct();
-      if (navigator.vibrate) navigator.vibrate(40);
     } else {
       if (typeof AudioFX !== 'undefined' && AudioFX.wrong) AudioFX.wrong();
-      if (navigator.vibrate) navigator.vibrate([40, 60, 40]);
     }
   } catch(e) {}
   if(!S.qcm.cards[q.id])S.qcm.cards[q.id]=FSRS.newCard();
@@ -1976,8 +2006,8 @@ function finishSession(){
     const overall=Math.round(ok/tot*100);
     showToast('Test de niveau : '+overall+'% — Parcours personnalisé !','ok');
   }
-  document.getElementById('qcm-session').style.display='none';
-  document.getElementById('qcm-results').style.display='block';
+  const _qs2=document.getElementById('qcm-session');if(_qs2)_qs2.style.display='none';
+  const _qr2=document.getElementById('qcm-results');if(_qr2)_qr2.style.display='block';
   const tierEl=document.getElementById('qr-tier');
   const scoreEl=document.getElementById('qr-score-big');
   const msgEl=document.getElementById('qr-msg');
@@ -2052,8 +2082,8 @@ function finishSession(){
 function replayLastQcmSession(){
   const r=S.qcm.lastReplay;
   if(!r){showToast('Impossible de rejouer cette session','err');return;}
-  document.getElementById('qcm-results').style.display='none';
-  document.getElementById('rev-menu').style.display='none';
+  const _qr3=document.getElementById('qcm-results');if(_qr3)_qr3.style.display='none';
+  const _rm3=document.getElementById('rev-menu');if(_rm3)_rm3.style.display='none';
   if(r.kind==='exam')startExamSession(r.n,r.min);
   else if(r.kind==='flash')startFlashSession();
   else if(r.kind==='theme'&&r.cat)startSession(r.cat);
@@ -2061,9 +2091,9 @@ function replayLastQcmSession(){
 }
 function exitQCM(){stopExamBanner();backToRevision();}
 function backToRevision(){
-  document.getElementById('qcm-session').style.display='none';
-  document.getElementById('qcm-results').style.display='none';
-  document.getElementById('rev-menu').style.display='block';
+  const _qs4=document.getElementById('qcm-session');if(_qs4)_qs4.style.display='none';
+  const _qr4=document.getElementById('qcm-results');if(_qr4)_qr4.style.display='none';
+  const _rm4=document.getElementById('rev-menu');if(_rm4)_rm4.style.display='block';
   updateDueCount();renderRevThemes();setRevTab(normalizeRevTab(S.rev?.tab)||'reviser');
 }
 function startExamBanner(minutes){
@@ -2080,7 +2110,7 @@ function stopExamBanner(){clearInterval(_examTimer);_examTimer=null;const el=doc
 
 /* ─── CR TIMER ─── */
 let _crPhase=1,_crTimer=null;
-function startCRTimer(){_crPhase=1;document.getElementById('cr-timer-ov').style.display='flex';runCRPhase();}
+function startCRTimer(){_crPhase=1;const _cov=document.getElementById('cr-timer-ov');if(_cov)_cov.style.display='flex';runCRPhase();}
 function runCRPhase(){
   clearInterval(_crTimer);
   const lbl=document.getElementById('cr-phase-lbl'),disp=document.getElementById('cr-timer-disp'),sub=document.getElementById('cr-phase-sub'),skip=document.getElementById('cr-skip-btn');
@@ -2098,7 +2128,7 @@ function runCRPhase(){
 function skipCRPhase(){_crPhase=2;runCRPhase();}
 function stopCRTimer(){
   clearInterval(_crTimer);
-  document.getElementById('cr-timer-ov').style.display='none';
+  const _cov2=document.getElementById('cr-timer-ov');if(_cov2)_cov2.style.display='none';
   if(!S.crDone)S.crDone=0;S.crDone++;save();
   BADGES.checkAll();
 }
@@ -2227,8 +2257,8 @@ function showGrades(){
     </div>`).join('')}
     <button class="btn btn-ghost btn-full mt12" onclick="closeLesson()">Fermer</button>
   </div>`;
-  document.getElementById('lesson-modal-body').innerHTML=html;
-  document.getElementById('lesson-ov').classList.add('on');
+  const _lm2=document.getElementById('lesson-modal-body');if(_lm2)_lm2.innerHTML=html;
+  const _lo2=document.getElementById('lesson-ov');if(_lo2)_lo2.classList.add('on');
   document.body.style.overflow='hidden';
 }
 function resetData(){
@@ -2646,7 +2676,7 @@ const LP={
 
 /* ═══ PFM — FICHE PROCÉDURE MODAL ═══ */
 /* NOTE: f.def, r.l, r.v, f.piege in PFM are static editorial text — not escaped */
-const PFM={open(id){const f=PB.find(x=>x.id===id);if(!f)return;const rows=Array.isArray(f.tab)?f.tab:[];let h=`<span class="bs-pill"></span><div class="bs-hd"><div class="bs-hd-row"><div style="flex:1"><div style="font-size:11px;color:var(--t3);font-family:'JetBrains Mono',monospace;margin-bottom:3px">${eh(f.ref)}</div><div style="font-size:17px;font-weight:900;color:var(--t1)">${eh(f.nm)}</div></div><button class="bs-close" onclick="PFM.close()">✕</button></div></div><div class="bs-bd"><div style="font-size:13px;color:var(--t2);line-height:1.65;margin-bottom:14px;padding:11px 13px;background:var(--bg-2);border-radius:10px">${f.def||''}</div>`;rows.forEach(r=>{h+=`<div class="pr-row"><div class="pr-l">${r.l}</div><div class="pr-v">${r.v}</div></div>`;});if(f.piege)h+=`<div class="fm-piege" style="margin-top:14px"><div class="fm-piege-l">⚠ Piège</div><div style="font-size:12px;color:var(--t2);line-height:1.6">${f.piege}</div></div>`;h+=`</div><div class="bs-ft"><button class="btn-prim" onclick="PFM.close()">Fermer</button></div>`;document.getElementById('pf-body').innerHTML=h;document.getElementById('pf-ov').style.display='flex';document.body.style.overflow='hidden';},close(){document.getElementById('pf-ov').style.display='none';document.body.style.overflow='';try{renderProcList();}catch(e){}}};
+const PFM={open(id){const f=PB.find(x=>x.id===id);if(!f)return;const rows=Array.isArray(f.tab)?f.tab:[];let h=`<span class="bs-pill"></span><div class="bs-hd"><div class="bs-hd-row"><div style="flex:1"><div style="font-size:11px;color:var(--t3);font-family:'JetBrains Mono',monospace;margin-bottom:3px">${eh(f.ref)}</div><div style="font-size:17px;font-weight:900;color:var(--t1)">${eh(f.nm)}</div></div><button class="bs-close" onclick="PFM.close()">✕</button></div></div><div class="bs-bd"><div style="font-size:13px;color:var(--t2);line-height:1.65;margin-bottom:14px;padding:11px 13px;background:var(--bg-2);border-radius:10px">${f.def||''}</div>`;rows.forEach(r=>{h+=`<div class="pr-row"><div class="pr-l">${r.l}</div><div class="pr-v">${r.v}</div></div>`;});if(f.piege)h+=`<div class="fm-piege" style="margin-top:14px"><div class="fm-piege-l">⚠ Piège</div><div style="font-size:12px;color:var(--t2);line-height:1.6">${f.piege}</div></div>`;h+=`</div><div class="bs-ft"><button class="btn-prim" onclick="PFM.close()">Fermer</button></div>`;const _pfb=document.getElementById('pf-body');if(_pfb)_pfb.innerHTML=h;const _pfo=document.getElementById('pf-ov');if(_pfo)_pfo.style.display='flex';document.body.style.overflow='hidden';},close(){const _pfo2=document.getElementById('pf-ov');if(_pfo2)_pfo2.style.display='none';document.body.style.overflow='';try{renderProcList();}catch(e){}}};
 
 function renderQDJ(){
   const el=document.getElementById('h-qdj');if(!el)return;
@@ -4475,9 +4505,9 @@ const BADGES={
   showModal(b){
     try{AudioFX.badge();}catch(e){}
     const ov=document.getElementById('badge-unlock-ov');if(!ov)return;
-    document.getElementById('bul-emoji').textContent=b.emoji;
-    document.getElementById('bul-name').textContent=b.name;
-    document.getElementById('bul-desc').textContent=b.desc;
+    const _be=document.getElementById('bul-emoji');if(_be)_be.textContent=b.emoji;
+    const _bn=document.getElementById('bul-name');if(_bn)_bn.textContent=b.name;
+    const _bd=document.getElementById('bul-desc');if(_bd)_bd.textContent=b.desc;
     ov.style.display='flex';
     ov.classList.add('show','badge-unlock--spectacular');
     setTimeout(()=>ov.classList.remove('badge-unlock--spectacular'),900);
@@ -4598,17 +4628,17 @@ const BLITZ_ASSERTIONS=[
 const BLITZ={
   _s:{idx:0,score:0,answers:[],timer:null,secs:60,queue:[]},
   start(){
-    document.getElementById('blitz-results-ov').style.display='none';
+    const _bro=document.getElementById('blitz-results-ov');if(_bro)_bro.style.display='none';
     const q=[...BLITZ_ASSERTIONS].sort(()=>Math.random()-.5).slice(0,10);
     BLITZ._s={idx:0,score:0,answers:[],timer:null,secs:60,queue:q};
-    document.getElementById('blitz-ov').classList.add('show');
+    const _bov=document.getElementById('blitz-ov');if(_bov)_bov.classList.add('show');
     BLITZ._render();BLITZ._startTimer();
   },
   _render(){
     const{idx,queue}=BLITZ._s;if(idx>=queue.length){BLITZ._finish();return;}
     const item=queue[idx];
-    document.getElementById('blitz-question').textContent=item.q;
-    document.getElementById('blitz-counter').textContent=(idx+1)+'/'+queue.length;
+    const _bq=document.getElementById('blitz-question');if(_bq)_bq.textContent=item.q;
+    const _bc=document.getElementById('blitz-counter');if(_bc)_bc.textContent=(idx+1)+'/'+queue.length;
     ['blitz-faux','blitz-vrai'].forEach(id=>{
       const btn=document.getElementById(id);if(!btn)return;
       btn.disabled=false;btn.className='blitz-btn '+(id==='blitz-faux'?'blitz-btn-ko':'blitz-btn-ok');
@@ -4631,7 +4661,7 @@ const BLITZ={
     BLITZ._s.answers.push({q:item.q,correct,ans:item.ans,expl:item.expl});
     const selId=userAns?'blitz-vrai':'blitz-faux';
     document.getElementById(selId)?.classList.add('sel');
-    ['blitz-faux','blitz-vrai'].forEach(id=>document.getElementById(id).disabled=true);
+    ['blitz-faux','blitz-vrai'].forEach(id=>{const b=document.getElementById(id);if(b)b.disabled=true;});
     setTimeout(()=>{BLITZ._s.idx++;BLITZ._render();},380);
   },
   _finish(){
@@ -4639,20 +4669,20 @@ const BLITZ={
     const{score,answers}=BLITZ._s;
     const xp=score*8+(score===10?50:0);addXP(xp);
     if(score>(S.blitzBest||0)){S.blitzBest=score;save();}
-    document.getElementById('blitz-ov').classList.remove('show');
-    document.getElementById('blitz-results-ov').style.display='flex';
-    document.getElementById('blitz-res-emoji').textContent=score>=8?'🏆':score>=5?'👍':'💪';
-    document.getElementById('blitz-res-score').textContent=score+'/10';
-    document.getElementById('blitz-res-xp').textContent='+'+xp+' XP';
-    document.getElementById('blitz-review').innerHTML=answers.map(a=>`
+    const _bov2=document.getElementById('blitz-ov');if(_bov2)_bov2.classList.remove('show');
+    const _bro2=document.getElementById('blitz-results-ov');if(_bro2)_bro2.style.display='flex';
+    const _bre=document.getElementById('blitz-res-emoji');if(_bre)_bre.textContent=score>=8?'🏆':score>=5?'👍':'💪';
+    const _brs=document.getElementById('blitz-res-score');if(_brs)_brs.textContent=score+'/10';
+    const _brx=document.getElementById('blitz-res-xp');if(_brx)_brx.textContent='+'+xp+' XP';
+    const _brv=document.getElementById('blitz-review');if(_brv)_brv.innerHTML=answers.map(a=>`
       <div style="background:var(--bg-1);border-left:3px solid ${a.correct?'var(--ok)':'var(--err)'};border-radius:0 var(--r-s) var(--r-s) 0;padding:8px 10px;margin-bottom:6px">
         <div class="text-xs fw-700" style="color:${a.correct?'var(--ok)':'var(--err)'}">${a.correct?'✓ CORRECT':'✗ INCORRECT'} — Réponse : ${a.ans?'VRAI':'FAUX'}</div>
         <div class="text-xs text-secondary mt8">${a.expl}</div>
       </div>`).join('');
     if(score===10)confetti(true);BADGES.checkAll();
   },
-  stop(){clearInterval(BLITZ._s.timer);document.getElementById('blitz-ov').classList.remove('show');document.getElementById('blitz-results-ov').style.display='none';},
-  backToMenu(){document.getElementById('blitz-results-ov').style.display='none';backToRevision();setRevTab('entrainement');}
+  stop(){clearInterval(BLITZ._s.timer);const _b1=document.getElementById('blitz-ov');if(_b1)_b1.classList.remove('show');const _b2=document.getElementById('blitz-results-ov');if(_b2)_b2.style.display='none';},
+  backToMenu(){const _b3=document.getElementById('blitz-results-ov');if(_b3)_b3.style.display='none';backToRevision();setRevTab('entrainement');}
 };
 
 /* ─── CLASSIFY ─── */
@@ -4964,6 +4994,14 @@ const QUALIF={
 /* ─── UTILS ─── */
 function eh(s){if(s==null)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function haptic(p){if(!S.settings?.haptics)return;try{if(navigator.vibrate)navigator.vibrate(Array.isArray(p)?p:[p]);}catch(e){}}
+function computeMastery(cat){
+  const pool=QB.filter(q=>q.cat===cat);if(!pool.length)return{mastery:0,total:0,done:0,due:0,ok:0};
+  const done=pool.filter(q=>(S.qcm?.cards?.[q.id]?.reps||0)>0);
+  const ok=done.filter(q=>(S.qcm?.cards?.[q.id]?.ok||0)>0);
+  const due=pool.filter(q=>{const c=S.qcm?.cards?.[q.id];return!c||c.due<=Date.now();}).length;
+  const mastery=done.length?Math.round(ok.length/done.length*100):0;
+  return{mastery,total:pool.length,done:done.length,due,ok:ok.length};
+}
 function showToast(msg,type=''){
   const ctr=document.getElementById('toast-ctr');if(!ctr)return;
   const el=document.createElement('div');
@@ -5167,8 +5205,8 @@ function finishAuth(name) {
 }
 
 function showAuthScreen() {
-  document.getElementById('onboarding').style.display = 'flex';
-  document.getElementById('app').style.display = 'none';
+  const _onb=document.getElementById('onboarding');if(_onb)_onb.style.display='flex';
+  const _app=document.getElementById('app');if(_app)_app.style.display='none';
 }
 
 function showAccountModal() {
@@ -5288,12 +5326,15 @@ function renderFSRSDueWidget(){}// legacy compat
       updateStreak();
       navigateTo('home');
       window.addEventListener('load',()=>{SHIELD.checkOnOpen();BADGES.checkAll();},{ once:true });
-    } else if (S.page !== 'onboarding' && S.user.name) {
-      // Pas de session Supabase mais données locales existantes
-      document.getElementById('onboarding').style.display='none';
-      const _a=document.getElementById('app'); if(_a){_a.style.display='flex';_a.style.flexDirection='column';} const _b=document.getElementById('bnav'); if(_b)_b.style.display='flex';
-      updateStreak();navigateTo('home');
-      window.addEventListener('load',()=>{SHIELD.checkOnOpen();BADGES.checkAll();},{ once:true });
+    } else {
+      const hasProgress=S.user.name&&S.user.name!=='OPJ'||S.user.xp>0||Object.keys(S.qcm?.cards||{}).length>0;
+      if(hasProgress&&S.page==='onboarding')S.page='home';
+      if(S.page !== 'onboarding' && S.user.name) {
+        const _onb2=document.getElementById('onboarding');if(_onb2)_onb2.style.display='none';
+        const _a=document.getElementById('app'); if(_a){_a.style.display='flex';_a.style.flexDirection='column';} const _b=document.getElementById('bnav'); if(_b)_b.style.display='flex';
+        updateStreak();navigateTo('home');
+        window.addEventListener('load',()=>{SHIELD.checkOnOpen();BADGES.checkAll();},{ once:true });
+      }
     }
     
     // Écouter les changements d'auth (magic link, etc.)
@@ -5312,8 +5353,10 @@ function renderFSRSDueWidget(){}// legacy compat
     });
   } else {
     // Supabase non disponible, mode local uniquement
+    const hasProgress=S.user.name&&S.user.name!=='OPJ'||S.user.xp>0||Object.keys(S.qcm?.cards||{}).length>0;
+    if(hasProgress&&S.page==='onboarding')S.page='home';
     if(S.page!=='onboarding'&&S.user.name){
-      document.getElementById('onboarding').style.display='none';
+      const _onb=document.getElementById('onboarding');if(_onb)_onb.style.display='none';
       const _a=document.getElementById('app'); if(_a){_a.style.display='flex';_a.style.flexDirection='column';} const _b=document.getElementById('bnav'); if(_b)_b.style.display='flex';
       updateStreak();navigateTo('home');
       window.addEventListener('load',()=>{SHIELD.checkOnOpen();BADGES.checkAll();},{ once:true });
@@ -5375,8 +5418,7 @@ function animCountUp(elId, target, duration=600){
   requestAnimationFrame(step);
 }
 
-// Haptic feedback (vibration)
-function haptic(d=10){try{navigator.vibrate&&navigator.vibrate(d);}catch(e){}}
+/* haptic() défini plus haut (l.4976) — suppression du doublon */
 
 // Confetti amélioré
 function confetti(intense=true){
@@ -5764,7 +5806,7 @@ function confetti(intense=true){
     {cat:'INFRACTIONS', name:'Infractions',         em:'⚖️'},
     {cat:'LIBERTES',    name:'Libertés publiques',  em:'🛡️'},
     {cat:'COMMISSION',  name:'Commission Rogatoire',em:'📜'},
-    {cat:'MESURESCOERC',name:'Mesures Coercitives', em:'⛓️'},
+    {cat:'MESURES_COERC',name:'Mesures Coercitives', em:'⛓️'},
   ];
 
   function renderStudyPlan(){
@@ -5772,14 +5814,16 @@ function confetti(intense=true){
     if(!el||!window.S||!window.QB)return;
     const examDate=S.user?.examDate?new Date(S.user.examDate+'-01'):null;
     const daysLeft=examDate?Math.max(0,Math.ceil((examDate-Date.now())/86400000)):null;
+    const ps=S.placementDone&&S.placementScore?S.placementScore:{};
     const themes=THEME_DEF.map(t=>{
-      const pool=QB.filter(q=>q.cat===t.cat);if(!pool.length)return null;
-      const done=pool.filter(q=>(S.qcm?.cards?.[q.id]?.reps||0)>0);
-      const ok=done.filter(q=>(S.qcm?.cards?.[q.id]?.ok||0)>0);
-      const mastery=done.length?Math.round(ok.length/done.length*100):0;
-      const due=pool.filter(q=>{const c=S.qcm?.cards?.[q.id];return!c||c.due<=Date.now();}).length;
-      return{...t,mastery,total:pool.length,done:done.length,due};
-    }).filter(Boolean).sort((a,b)=>a.mastery-b.mastery);
+      const m=computeMastery(t.cat);if(!m.total)return null;
+      const placementPenalty=ps[t.cat]!==undefined?(100-ps[t.cat]):0;
+      return{...t,...m,placementPenalty};
+    }).filter(Boolean).sort((a,b)=>{
+      const scoreA=a.mastery-a.placementPenalty*0.3;
+      const scoreB=b.mastery-b.placementPenalty*0.3;
+      return scoreA-scoreB;
+    });
     let phaseIcon='🎯',phaseLbl='BASES',phaseTxt='Construis tes fondamentaux';
     if(daysLeft!==null){
       if(daysLeft<=7){phaseIcon='🔥';phaseLbl='SPRINT';phaseTxt='Sprint final — tout réviser !';}
