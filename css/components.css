@@ -1,0 +1,30 @@
+/* OPJ Elite v52 — Components
+   Classes partagées entre pages. Complète pages.css. */
+
+/* ── Titres : forcer Syne sur tous les éléments display ── */
+h1, h2, h3, .sec-hd h4, .hero-title, .mode-card-title,
+.lesson-title, .chapter-title, .page-title {
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+}
+
+/* ── Boutons : feedback tactile ── */
+.btn, .q-opt, .nav-btn, .mode-card, .badge-item {
+  transition: transform 0.12s cubic-bezier(.4,0,.2,1),
+              opacity 0.12s cubic-bezier(.4,0,.2,1),
+              box-shadow 0.12s cubic-bezier(.4,0,.2,1);
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.btn:active, .q-opt:active, .mode-card:active {
+  transform: scale(0.96);
+  opacity: 0.88;
+}
+.nav-btn:active {
+  transform: scale(0.90);
+}
+
+/* ── Score de fin de session ── */
+.qr-tier--green { color: var(--ok); }
+.qr-tier--orange { color: var(--warn); }
+.qr-tier--red { color: var(--err); }

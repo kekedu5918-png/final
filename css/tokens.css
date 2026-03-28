@@ -1,0 +1,94 @@
+/* ═══════════════════════════════════════════════════════
+   OPJ ELITE — CSS Tokens v59
+   Source unique des variables de design (dark theme).
+   Chargé AVANT components.css et pages.css.
+   ═══════════════════════════════════════════════════════ */
+
+:root {
+  /* ── Couleurs de fond ── */
+  --bg-0: #03050c;
+  --bg-1: #070b15;
+  --bg-2: #0c1220;
+  --bg-3: #111827;
+  --bg-4: #1c2539;
+  --bg-5: #253047;
+
+  /* ── Fond sémantique (header/nav/overlay) ── */
+  --bg-header: rgba(3,5,12,.82);
+  --bg-nav: rgba(3,5,12,.92);
+  --bg-overlay: rgba(3,5,12,.7);
+
+  /* ── Accent ── */
+  --accent: #1b6bff;
+  --accent-l: #4d8fff;
+  --accent-xl: #82b4ff;
+  --accent-glow: rgba(27,107,255,.20);
+  --accent-glow-l: rgba(27,107,255,.09);
+
+  /* ── Or / grades ── */
+  --gold: #c8921a;
+  --gold-l: #e6af44;
+  --gold-glow: rgba(200,146,26,.15);
+
+  /* ── Feedback ── */
+  --ok: #00c97a;
+  --ok-bg: rgba(0,201,122,.1);
+  --warn: #ff8c42;
+  --warn-bg: rgba(255,140,66,.1);
+  --err: #ff3d57;
+  --err-bg: rgba(255,61,87,.1);
+
+  /* ── Couleurs secondaires ── */
+  --cyan: #00d4e8;
+  --violet: #7c3aed;
+  --violet-l: #a78bfa;
+  --rose: #f43f5e;
+  --blitz-red: #cc2a40;
+  --blitz-green: #00a864;
+  --navy: #003087;
+
+  /* ── Texte ── */
+  --t1: #e8eeff;
+  --t2: #6b7fa3;
+  --t3: #3a4a6b;
+  --t4: #2a3656;
+
+  /* ── Bordures ── */
+  --brd: rgba(255,255,255,.06);
+  --brd-l: rgba(255,255,255,.11);
+  --brd-acc: rgba(27,107,255,.35);
+  --brd-gold: rgba(200,146,26,.30);
+
+  /* ── Rayons ── */
+  --r-xs: 6px;
+  --r-s: 8px;
+  --r-m: 12px;
+  --r-l: 16px;
+  --r-xl: 20px;
+  --r-2xl: 26px;
+  --r-3xl: 34px;
+
+  /* ── Ombres ── */
+  --sh: 0 2px 8px rgba(0,0,0,.35);
+  --sh-sm: 0 1px 3px rgba(0,0,0,.25);
+  --sh-acc: 0 4px 16px rgba(27,107,255,.18);
+
+  /* ── Transitions ── */
+  --tr: .16s cubic-bezier(.4,0,.2,1);
+  --tr-spring: .38s cubic-bezier(.34,1.56,.64,1);
+
+  /* ── Layout ── */
+  --hdr-h: 52px;
+  --nav-h: 60px;
+  --safe-t: env(safe-area-inset-top, 0px);
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --tap-h: 44px;
+  --page-px: 16px;
+
+  /* ── Z-index ── */
+  --z-base: 1;
+  --z-overlay: 100;
+  --z-modal: 200;
+  --z-toast: 300;
+  --z-critical: 400;
+}
