@@ -174,7 +174,7 @@ lessons:[
  intro:'L\'échelle pénale des violences dépend du résultat (ITT) et des aggravantes. Les atteintes sexuelles se distinguent selon la présence ou non d\'une pénétration.',
  secs:[
  {t:'Échelle des violences selon ITT',table:{th:['Résultat','Article','Nature','Peine base'],rows:[['Sans ITT (gifle)','R624-1 CP','Contravention','3 750 €'],['ITT ≤ 8 jours','R625-1 CP','Contravention','1 500 €'],['ITT > 8 jours','222-11 CP','Délit','3 ans / 45k€'],['Mutilation/infirmité','222-9 CP','Crime','10 ans RC'],['Mort sans intention','222-7 CP','Crime','15 ans RC']]}},
- {t:'Atteintes sexuelles — critère clé',items:[' VIOL (222-23 CP) : pénétration sexuelle OU acte bucco-génital — 15 ans RC ',' Agression sexuelle (222-27 CP) : acte sexuel SANS pénétration — 7 ans + 100k€ ',' Critère unique : la PÉNÉTRATION fait basculer de délit à crime','Aggravant mineur < 15 ans : viol → 20 ans RC / Agression → 10 ans']},
+ {t:'Atteintes sexuelles — critère clé',items:[' VIOL (222-23 CP) : pénétration sexuelle OU acte bucco-génital — 15 ans RC ',' Agression sexuelle (222-22 CP) : acte sexuel SANS pénétration — 7 ans + 100k€ ',' Critère unique : la PÉNÉTRATION fait basculer de délit à crime','Aggravant mineur < 15 ans : viol → 20 ans RC / Agression → 10 ans']},
  ],
  traps:['ITT = durée d\'incapacité totale de travail. Fixée par le médecin légiste.','Viol = crime (15 ans RC). Agression sexuelle = délit (7 ans). Un seul critère : la pénétration.'],
  keys:['ITT > 8j = 222-11 délit. ITT ≤ 8j = contravention','Viol vs agression : critère = PÉNÉTRATION']},

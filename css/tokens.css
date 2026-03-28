@@ -48,7 +48,7 @@
   --r-3xl: 34px;
 
   --tr: .16s cubic-bezier(.4,0,.2,1);
-  --spring: .38s cubic-bezier(.34,1.56,.64,1);
+  --tr-spring: .38s cubic-bezier(.34,1.56,.64,1);
 
   --z-base: 1;
   --z-overlay: 100;

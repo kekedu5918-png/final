@@ -1,13 +1,13 @@
 
 'use strict';
 /* ═══════════════════════════════════════════════════════
-   OPJ ELITE v51.0 — Script unique, architecture propre
+   OPJ ELITE v57.0 — Script unique, architecture propre
    Ordre chargement HTML : fsrs, audio, supabase, chapters.js, questions.js,
          flashcards.js, puis ce fichier (GRADES → STATE → FSRS → NAV → …)
    ═══════════════════════════════════════════════════════ */
 
 /* ─── VERSION ─── */
-const APP_VERSION='v51.0', STORAGE_KEY='opje_v51', STATE_VERSION=51;
+const APP_VERSION='v57.0', STORAGE_KEY='opje_v57', STATE_VERSION=57;
 
 /* ═══════════════════════════════════════════════════════════════════════════
    SUPABASE CONFIGURATION — Auth + Sync + Stripe Ready
@@ -422,13 +422,15 @@ function defaultState(){
     lightMode:false,annalesDone:{},pfs:{},fs:{},badgeUiSeen:{},_badgeUiBackfill:false,
     printed:{},printDone:0,isPro:false,
     oral:{done:{},scores:{}},
-    milestones:{}
+    milestones:{},
+    placementDone:false,placementScore:{},
+    errorLog:{}
   };
 }
 let S=defaultState();
 
 function loadState(){
-  let loaded=false; /* FIX v53 */
+  let loaded=false;
   try{
     const r=localStorage.getItem(STORAGE_KEY);if(!r)return;
     const s=JSON.parse(r);
@@ -445,11 +447,18 @@ function loadState(){
       if(prev.printDone)S.printDone=prev.printDone;
       if(prev.annalesDone)S.annalesDone=prev.annalesDone;
       if(prev.oral)S.oral={...S.oral,...prev.oral};
+      if(prev.milestones)S.milestones=prev.milestones;
+      if(prev.errorLog)S.errorLog=prev.errorLog;
+      if(prev.placementDone)S.placementDone=prev.placementDone;
+      if(prev.placementScore)S.placementScore=prev.placementScore;
+      if(prev.badges)S.badges=prev.badges;
+      if(prev.activity)S.activity=prev.activity;
+      if(prev.missions2)S.missions2=prev.missions2;
       S.isPro=prev.isPro||prev.user?.isPRO||false;
       S.page='home';save();loaded=true;return;
     }
     S={...defaultState(),...s,page:'home'};
-    // Assurer chaque clé v28
+    // Assurer chaque clé v57
     if(!S.badges)S.badges={};if(!S.badgeUiSeen)S.badgeUiSeen={};
     if(!S._badgeUiBackfill){S._badgeUiBackfill=true;Object.keys(S.badges||{}).forEach(id=>{S.badgeUiSeen[id]=1;});try{save();}catch(e){}}
     if(!S.shield)S.shield={count:1,lastEarned:null};
@@ -459,23 +468,32 @@ function loadState(){
     if(S.isPro===undefined)S.isPro=S.user?.isPRO||false;
     if(!S.oral)S.oral={done:{},scores:{}};
     if(!S.milestones)S.milestones={};
+    if(!S.placementDone)S.placementDone=false;
+    if(!S.placementScore)S.placementScore={};
+    if(!S.errorLog)S.errorLog={};
     loaded=true;
   }catch(e){console.warn('[OPJ v28] loadState:',e);}
-  // Migration v29 → v30
-  if(!loaded){const old=localStorage.getItem('opje_v30')||localStorage.getItem('opj_v30')||localStorage.getItem('opje_v29')||localStorage.getItem('opj_v29');
+  if(!loaded){const old=localStorage.getItem('opje_v51')||localStorage.getItem('opje_v30')||localStorage.getItem('opj_v30')||localStorage.getItem('opje_v29')||localStorage.getItem('opj_v29');
     if(old){try{const d=JSON.parse(old);S={...defaultState(),...d};save();}catch(e){}}
   }
 
 }
+let _saveQueued=false,_lastSave=0;
 function save(){
-  /* Sync isPro ↔ user.isPRO */
-  if(S.isPro&&!S.user.isPRO)S.user.isPRO=true;
   if(S.user.isPRO&&!S.isPro)S.isPro=true;
-  try{localStorage.setItem(STORAGE_KEY,JSON.stringify(S));}
-  catch(e){showToast('⚠️ Stockage plein','err');}
-  /* Sync cloud si connecté */
-  if(currentUser && supabaseClient) {
-    SYNC.debouncedSave();
+  if(S.isPro&&!S.user.isPRO)S.user.isPRO=true;
+  const now=Date.now();
+  if(now-_lastSave>300){
+    _lastSave=now;
+    try{localStorage.setItem(STORAGE_KEY,JSON.stringify(S));}catch(e){showToast('⚠️ Stockage plein','err');}
+    if(typeof currentUser!=='undefined'&&currentUser&&SYNC.debouncedSave)SYNC.debouncedSave();
+  }else if(!_saveQueued){
+    _saveQueued=true;
+    setTimeout(()=>{
+      _saveQueued=false;_lastSave=Date.now();
+      try{localStorage.setItem(STORAGE_KEY,JSON.stringify(S));}catch(e){}
+      if(typeof currentUser!=='undefined'&&currentUser&&SYNC.debouncedSave)SYNC.debouncedSave();
+    },300);
   }
 }
 
@@ -488,6 +506,7 @@ function getXPPct(){const g=getGrade(),n=getNextGrade();if(!n)return 100;return 
 
 let _levelUpTimer=null;
 function showLevelUpOverlay(newGrade){
+  try{AudioFX.levelUp();}catch(e){}
   const ov=document.getElementById('levelup-ov');
   if(!ov)return;
   const n=getNextGrade();
@@ -894,6 +913,8 @@ function renderHome(){
   renderWeakWidget();
   try{renderQDJ();}catch(e){}
   try{if(typeof showNotifPermissionBanner==='function')showNotifPermissionBanner();}catch(_){}
+  const placementEl=document.getElementById('placement-card');
+  if(placementEl)placementEl.style.display=S.placementDone?'none':'flex';
 }
 
 function renderChapterProgress(){if(typeof CHAPTERS==='undefined'||!CHAPTERS)return;
@@ -948,6 +969,13 @@ function renderWeakWidget(){
   </div>`;
 }
 
+/* ─── LOCKED LESSON PATH HELPERS ─── */
+function isLessonUnlocked(chapter, lessonIndex){
+  if(lessonIndex===0)return true;
+  const prevLesson=chapter.lessons[lessonIndex-1];
+  return !!S.lessons[prevLesson.id];
+}
+
 /* ─── RENDER LEÇONS ─── */
 function renderLecons(){
   const totalLessons=CHAPTERS.reduce((a,c)=>a+c.lessons.length,0);
@@ -986,20 +1014,24 @@ function renderLecons(){
     </div>
   </div>
   <div class="chapter-lessons" id="lessons-${ch.id}">
-    ${ch.lessons.map(l => {
+    ${ch.lessons.map((l,idx) => {
       const done = !!S.lessons[l.id];
-      return `<div class="lesson-item"
-        onclick="openLesson('${l.id}');event.stopPropagation()">
-        <span class="lesson-em">${l.em}</span>
-        <div class="lesson-inf">
-          <div class="lesson-name">${l.name}</div>
-          <div class="lesson-meta">${l.ref}</div>
-        </div>
-        <span class="lesson-xp-badge">+${l.xp} XP</span>
-        <div class="lesson-status ${done?'done':'new'}">
-          ${done?'✓':'→'}
-        </div>
-      </div>`;
+      const unlocked = isLessonUnlocked(ch, idx);
+      const isCurrent = unlocked && !done;
+      const nodeClass = 'lesson-item lesson-node' + (done?' completed':(!unlocked?' locked':(isCurrent?' current':'')));
+      const connector = idx > 0 ? '<div class="lesson-connector'+(!!S.lessons[ch.lessons[idx-1].id]?' done':'')+'"></div>' : '';
+      return connector + '<div class="'+nodeClass+'"' +
+        ' onclick="'+(unlocked?'openLesson(\''+l.id+'\');event.stopPropagation()':'showToast(\'Termine d\\\'abord la leçon précédente\',\'err\');event.stopPropagation()')+'">' +
+        '<span class="lesson-em">'+(unlocked?l.em:'🔒')+'</span>' +
+        '<div class="lesson-inf">' +
+          '<div class="lesson-name">'+l.name+'</div>' +
+          '<div class="lesson-meta">'+l.ref+'</div>' +
+        '</div>' +
+        (unlocked?'<span class="lesson-xp-badge">+'+l.xp+' XP</span>':'') +
+        '<div class="lesson-status '+(done?'done':(!unlocked?'locked-status':'new'))+'">' +
+          (done?'✓':(!unlocked?'🔒':'→')) +
+        '</div>' +
+      '</div>';
     }).join('')}
   </div>
 </div>`;
@@ -1015,12 +1047,13 @@ function openLesson(id){
   const lesson=CHAPTERS.flatMap(c=>c.lessons).find(l=>l.id===id);if(!lesson)return;
   const chapter=CHAPTERS.find(c=>c.lessons.some(l=>l.id===id));
   const isDone=!!S.lessons[id];
-  let html=`<div class="lesson-chapter-badge" style="background:${chapter.bg};color:${chapter.color}">${chapter.icon} ${chapter.title}</div>`;
-  html+=`<div class="lesson-modal-title">${lesson.em} ${lesson.name}</div>`;
-  html+=`<div class="lesson-modal-ref">${lesson.ref}</div>`;
+  let html=`<div class="lesson-chapter-badge" style="background:${chapter.bg};color:${chapter.color}">${eh(chapter.icon)} ${eh(chapter.title)}</div>`;
+  html+=`<div class="lesson-modal-title">${eh(lesson.em)} ${eh(lesson.name)}</div>`;
+  html+=`<div class="lesson-modal-ref">${eh(lesson.ref)}</div>`;
+  /* NOTE: lesson.intro, s.items, s.table, lesson.traps, lesson.keys contain editorial HTML — not escaped */
   if(lesson.intro)html+=`<div class="lesson-intro">${lesson.intro}</div>`;
   (lesson.secs||[]).forEach(s=>{
-    html+=`<div class="lesson-sec-title">${s.t}</div>`;
+    html+=`<div class="lesson-sec-title">${eh(s.t)}</div>`;
     if(s.table){
       html+=`<div style="overflow-x:auto;margin-bottom:7px"><table class="art-table"><thead><tr>${s.table.th.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${s.table.rows.map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
     }else{
@@ -1086,6 +1119,16 @@ function normalizeRevTab(t){
 function renderRevision(){
   renderRevThemes();renderBubbles();renderProcList();updateDueCount();
   setRevTab(normalizeRevTab(S.rev?.tab)||'reviser');
+  const erCard=document.getElementById('error-review-card');
+  if(erCard){
+    const hasErrors=S.errorLog&&Object.keys(S.errorLog).length>0;
+    erCard.style.display=hasErrors?'flex':'none';
+    if(hasErrors){
+      const sorted=Object.entries(S.errorLog).sort((a,b)=>b[1]-a[1]).slice(0,3);
+      const subEl=document.getElementById('er-sub-text');
+      if(subEl)subEl.textContent=sorted.map(e=>e[0]).join(', ');
+    }
+  }
 }
 function setRevTab(tab){
   S.rev=S.rev||{};
@@ -1569,17 +1612,17 @@ function openFiche(id){
   <!-- HEADER -->
   <div class="fo-header" style="background:${qc.grd};border-bottom:1px solid ${qc.h}22">
     <div class="fo-header-top">
-      <div class="fo-em">${f.em}</div>
+      <div class="fo-em">${eh(f.em)}</div>
       <div class="fo-header-right">
-        <span class="fo-qual-badge" style="background:${qc.bg};color:${qc.h}">${f.qual}</span>
-        <span class="fo-fam-badge">${f.fam||'—'}</span>
+        <span class="fo-qual-badge" style="background:${qc.bg};color:${qc.h}">${eh(f.qual)}</span>
+        <span class="fo-fam-badge">${eh(f.fam||'—')}</span>
       </div>
     </div>
-    <div class="fo-title">${f.nm}</div>
-    <div class="fo-ref">${f.ref}</div>
+    <div class="fo-title">${eh(f.nm)}</div>
+    <div class="fo-ref">${eh(f.ref)}</div>
     <div class="fo-pn">
       <span class="fo-pn-icon">⚖️</span>
-      <span class="fo-pn-txt">${f.pn}</span>
+      <span class="fo-pn-txt">${eh(f.pn)}</span>
     </div>
   </div>
 
@@ -1599,15 +1642,15 @@ function openFiche(id){
     <div class="fo-section-hd">📐 Éléments constitutifs</div>
     ${f.L?`<div class="fo-block fo-block-legal">
       <div class="fo-block-label">📜 LÉGAL</div>
-      <div class="fo-block-text">${f.L}</div>
+      <div class="fo-block-text">${eh(f.L)}</div>
     </div>`:''}
     ${f.A?`<div class="fo-block fo-block-materiel">
       <div class="fo-block-label">🔨 MATÉRIEL</div>
-      <div class="fo-block-text">${f.A}</div>
+      <div class="fo-block-text">${eh(f.A)}</div>
     </div>`:''}
     ${f.M?`<div class="fo-block fo-block-moral">
       <div class="fo-block-label">🧠 MORAL</div>
-      <div class="fo-block-text">${f.M}</div>
+      <div class="fo-block-text">${eh(f.M)}</div>
     </div>`:''}
   </div>`;
 
@@ -1620,10 +1663,10 @@ function openFiche(id){
         ${aggs.map(e=>`
           <div class="fo-agg-row">
             <div class="fo-agg-left">
-              <div class="fo-agg-nm">${e.a}</div>
-              ${e.r?`<div class="fo-agg-ref">Art. ${e.r}</div>`:''}
+              <div class="fo-agg-nm">${eh(e.a)}</div>
+              ${e.r?`<div class="fo-agg-ref">Art. ${eh(e.r)}</div>`:''}
             </div>
-            <div class="fo-agg-pn" style="background:rgba(239,68,68,.12);color:#ef4444">${e.p}</div>
+            <div class="fo-agg-pn" style="background:rgba(239,68,68,.12);color:#ef4444">${eh(e.p)}</div>
           </div>`).join('')}
       </div>
     </div>`;
@@ -1635,7 +1678,7 @@ function openFiche(id){
     h+=`<div class="fo-section">
       <div class="fo-section-hd">🔀 Ne pas confondre</div>
       <div class="fo-cf-card">
-        <div class="fo-cf-text">${cfTxt}</div>
+        <div class="fo-cf-text">${eh(cfTxt)}</div>
       </div>
     </div>`;
   }
@@ -1644,7 +1687,7 @@ function openFiche(id){
   if(f.pg){
     h+=`<div class="fo-piege">
       <div class="fo-piege-hd">⚠️ Piège d'examen</div>
-      <div class="fo-piege-txt">${f.pg}</div>
+      <div class="fo-piege-txt">${eh(f.pg)}</div>
     </div>`;
   }
 
@@ -1666,12 +1709,33 @@ function setFiche(id,s){
   S.fs[id]=s;save();openFiche(id);renderBubbles();
 }
 
+/* ─── ADAPTIVE DIFFICULTY ─── */
+function getUserLevel(){
+  const xp=S.user.xp||0;
+  if(xp<200)return 1;
+  if(xp<1000)return 2;
+  return 3;
+}
+
+function _adaptiveSort(questions){
+  const lvl=getUserLevel();
+  const weights={1:{1:70,2:30,3:0},2:{1:30,2:50,3:20},3:{1:0,2:20,3:80}};
+  const w=weights[lvl];
+  return [...questions].sort((a,b)=>{
+    const wa=w[a.diff]||10;
+    const wb=w[b.diff]||10;
+    return wb-wa||(Math.random()-.5);
+  });
+}
+
 /* ─── QCM ENGINE ─── */
 let _examTimer=null;
 function startSmartSession(){
+  try{AudioFX.click();}catch(e){}
   S.qcm.sessionKind='smart';
   const due=QB.filter(q=>FSRS.isDue(S.qcm.cards[q.id]));
-  const pool=due.length>=10?due:[...QB].sort(()=>Math.random()-.5).slice(0,20);
+  const base=due.length>=10?due:[...QB].sort(()=>Math.random()-.5).slice(0,20);
+  const pool=_adaptiveSort(base);
   buildSession(pool.slice(0,10));
 }
 function startSession(cat){
@@ -1690,6 +1754,90 @@ function startExamSession(n,minutes){
   S.qcm.sessionKind='exam';
   const pool=[...QB].sort(()=>Math.random()-.5).slice(0,Math.min(n,QB.length));
   buildSession(pool,minutes);
+}
+
+/* ═══ FLASH EXPRESS — 3 questions faibles, 2 min ═══ */
+function startFlashExpress(){
+  try{AudioFX.click();}catch(e){}
+  S.qcm.sessionKind='flash';
+  const catStats={};
+  QB.forEach(q=>{
+    const card=S.qcm.cards[q.id];
+    if(!card||!card.reps)return;
+    if(!catStats[q.cat])catStats[q.cat]={ok:0,total:0};
+    catStats[q.cat].total++;
+    if(card.ok)catStats[q.cat].ok+=card.ok;
+  });
+  let weakCats=Object.entries(catStats)
+    .map(([cat,s])=>({cat,rate:s.total?s.ok/s.total:0}))
+    .sort((a,b)=>a.rate-b.rate)
+    .slice(0,3)
+    .map(c=>c.cat);
+  if(weakCats.length<3){
+    const allCats=[...new Set(QB.map(q=>q.cat))];
+    for(const c of allCats){
+      if(!weakCats.includes(c))weakCats.push(c);
+      if(weakCats.length>=3)break;
+    }
+  }
+  const picked=[];
+  weakCats.forEach(cat=>{
+    const pool=QB.filter(q=>q.cat===cat);
+    const due=pool.filter(q=>FSRS.isDue(S.qcm.cards[q.id]));
+    const src=due.length?due:pool;
+    const sorted=_adaptiveSort(src);
+    const q=sorted[0];
+    if(q)picked.push(q);
+  });
+  if(!picked.length){
+    const fallback=[...QB].sort(()=>Math.random()-.5).slice(0,3);
+    buildSession(fallback);
+    return;
+  }
+  buildSession(picked);
+}
+
+/* ═══ TEST DE PLACEMENT — 10 questions, 5 thèmes ═══ */
+function startPlacementTest(){
+  if(S.placementDone){showToast('Déjà effectué','err');return;}
+  S.qcm.sessionKind='placement';
+  const themes=['GAV','FLAGRANCE','PERQUIZ','OPJ','INFRACTIONS'];
+  const picked=[];
+  themes.forEach(cat=>{
+    const pool=QB.filter(q=>q.cat===cat&&(q.diff===1||q.diff===2));
+    const fallback=pool.length?pool:QB.filter(q=>q.cat===cat);
+    const shuffled=[...fallback].sort(()=>Math.random()-.5);
+    picked.push(...shuffled.slice(0,2));
+  });
+  if(picked.length<5){
+    const extra=[...QB].filter(q=>!picked.includes(q)).sort(()=>Math.random()-.5);
+    while(picked.length<10&&extra.length)picked.push(extra.shift());
+  }
+  buildSession(picked.slice(0,10));
+}
+
+/* ═══ RÉVISION DES ERREURS — top 3 catégories faibles ═══ */
+function startErrorReview(){
+  if(!S.errorLog||!Object.keys(S.errorLog).length){
+    showToast('Aucune erreur enregistrée','err');return;
+  }
+  S.qcm.sessionKind='errorReview';
+  const sorted=Object.entries(S.errorLog).sort((a,b)=>b[1]-a[1]).slice(0,3);
+  const cats=sorted.map(e=>e[0]);
+  const picked=[];
+  cats.forEach(cat=>{
+    const pool=QB.filter(q=>q.cat===cat);
+    const due=pool.filter(q=>FSRS.isDue(S.qcm.cards[q.id]));
+    const src=due.length?due:pool;
+    const shuffled=[...src].sort(()=>Math.random()-.5);
+    picked.push(...shuffled.slice(0,2));
+  });
+  if(picked.length<5){
+    const extra=QB.filter(q=>cats.includes(q.cat)&&!picked.includes(q)).sort(()=>Math.random()-.5);
+    while(picked.length<5&&extra.length)picked.push(extra.shift());
+  }
+  showToast('Révision ciblée : tes 3 points faibles','ok');
+  buildSession(picked.slice(0,5));
 }
 function _beginSession(queue,minutes){
   S.qcm.queue=queue.map(q=>shuffleQ({...q}));S.qcm.idx=0;S.qcm.answered=null;S.qcm.stats={ok:0,ko:0,xp:0};
@@ -1735,9 +1883,9 @@ function renderCurrentQ(){
   const answered=S.qcm.answered;
   const isFirstEver=(S.user.sessionsDone||0)===0&&S.qcm.idx===0;
   let html=`<div class="q-progress">${dots}</div>`;
-  html+=`<div class="q-cat">${q.cat||'QCM'}</div>`;
-  html+=`<div class="q-txt">${q.q}</div>`;
-  html+=`<div class="q-art">${q.art||''}</div>`;
+  html+=`<div class="q-cat">${eh(q.cat||'QCM')}</div>`;
+  html+=`<div class="q-txt">${eh(q.q)}</div>`;
+  html+=`<div class="q-art">${eh(q.art||'')}</div>`;
   html+=`<div class="q-opts">`;
   q.opts.forEach((opt,i)=>{
     let cls='q-opt';
@@ -1752,7 +1900,7 @@ function renderCurrentQ(){
   if(isFirstEver){html+=`<div class="swipe-hint" id="swipe-hint-el"><span>← Swiper pour passer après avoir répondu</span></div>`;}
   if(answered!==null&&q.expl){
     const ok=answered===q.c;
-    html+=`<div class="q-expl"><div class="q-verdict ${ok?'ok':'ko'}">${ok?'✓ Correct !':'✗ Incorrect'}</div>${q.expl}</div>`;
+    html+=`<div class="q-expl"><div class="q-verdict ${ok?'ok':'ko'}">${ok?'✓ Correct !':'✗ Incorrect'}</div>${eh(q.expl)}</div>`;
   }
   document.getElementById('qcm-body').innerHTML=html;
   const nw=document.getElementById('qcm-next-wrap');
@@ -1794,6 +1942,9 @@ function answerQ(i){
     S.qcm.stats.ko++;
     if(!S.qcm.wrongs)S.qcm.wrongs=[];
     S.qcm.wrongs.push(q);
+    if(!S.errorLog)S.errorLog={};
+    if(!S.errorLog[q.cat])S.errorLog[q.cat]=0;
+    S.errorLog[q.cat]++;
     haptic([40,80,40]);
   }
   save();renderCurrentQ();
@@ -1819,6 +1970,26 @@ function finishSession(){
     S.qcm.lastReplay={kind:'theme',cat:q0.cat};
   }else{
     S.qcm.lastReplay={kind:'smart'};
+  }
+  if(sk==='placement'){
+    const catScores={};
+    S.qcm.queue.forEach(q=>{
+      if(!catScores[q.cat])catScores[q.cat]={ok:0,total:0};
+      catScores[q.cat].total++;
+    });
+    (S.qcm.wrongs||[]).forEach(q=>{
+      if(catScores[q.cat])catScores[q.cat].ok--;
+    });
+    const scores={};
+    Object.entries(catScores).forEach(([cat,s])=>{
+      const okCount=s.total-(S.qcm.wrongs||[]).filter(q=>q.cat===cat).length;
+      scores[cat]=Math.round(Math.max(0,okCount)/s.total*100);
+    });
+    S.placementDone=true;
+    S.placementScore=scores;
+    save();
+    const overall=Math.round(ok/tot*100);
+    showToast('Test de niveau : '+overall+'% — Parcours personnalisé !','ok');
   }
   document.getElementById('qcm-session').style.display='none';
   document.getElementById('qcm-results').style.display='block';
@@ -1996,6 +2167,36 @@ function renderProfil(){
     BADGES.renderGrid();
     THEME28.apply();
   });
+  const progEl=document.getElementById('pr-prog-30');
+  if(progEl){
+    const today=new Date();
+    let html='<div class="prog-30-grid">';
+    for(let i=29;i>=0;i--){
+      const d=new Date(today);
+      d.setDate(d.getDate()-i);
+      const key=d.toDateString();
+      const active=S.activity&&S.activity[key];
+      html+=`<div class="prog-day ${active?'active':''}" title="${d.toLocaleDateString('fr-FR')}"></div>`;
+    }
+    html+='</div>';
+    progEl.innerHTML=html;
+  }
+  const readyEl=document.getElementById('pr-readiness');
+  if(readyEl){
+    const totalQ=QB.length;
+    const mastered=QB.filter(q=>{const c=S.qcm.cards[q.id];return c&&c.reps>=2&&!FSRS.isDue(c);}).length;
+    const lessonsDone=Object.keys(S.lessons).length;
+    const totalLessons=CHAPTERS.flatMap(c=>c.lessons).length;
+    const qPct=totalQ>0?mastered/totalQ:0;
+    const lPct=totalLessons>0?lessonsDone/totalLessons:0;
+    const readiness=Math.round((qPct*0.6+lPct*0.4)*100);
+    readyEl.innerHTML=`
+      <div class="readiness-score">${readiness}<span class="readiness-pct">%</span></div>
+      <div class="readiness-label">Prêt pour l'examen</div>
+      <div class="readiness-bar"><div class="readiness-fill" style="width:${readiness}%"></div></div>
+      <div class="readiness-detail">${mastered}/${totalQ} QCM maîtrisés · ${lessonsDone}/${totalLessons} leçons</div>
+    `;
+  }
 }
 function renderActivityBars(){
   const el=document.getElementById('pr-activity-bars');if(!el)return;
@@ -2459,7 +2660,8 @@ const LP={
 /* PWA handled by static manifest.json and /sw.js */
 
 /* ═══ PFM — FICHE PROCÉDURE MODAL ═══ */
-const PFM={open(id){const f=PB.find(x=>x.id===id);if(!f)return;const rows=Array.isArray(f.tab)?f.tab:[];let h=`<span class="bs-pill"></span><div class="bs-hd"><div class="bs-hd-row"><div style="flex:1"><div style="font-size:11px;color:var(--t3);font-family:'JetBrains Mono',monospace;margin-bottom:3px">${f.ref}</div><div style="font-size:17px;font-weight:900;color:var(--t1)">${f.nm}</div></div><button class="bs-close" onclick="PFM.close()">✕</button></div></div><div class="bs-bd"><div style="font-size:13px;color:var(--t2);line-height:1.65;margin-bottom:14px;padding:11px 13px;background:var(--bg-2);border-radius:10px">${f.def||''}</div>`;rows.forEach(r=>{h+=`<div class="pr-row"><div class="pr-l">${r.l}</div><div class="pr-v">${r.v}</div></div>`;});if(f.piege)h+=`<div class="fm-piege" style="margin-top:14px"><div class="fm-piege-l">⚠ Piège</div><div style="font-size:12px;color:var(--t2);line-height:1.6">${f.piege}</div></div>`;h+=`</div><div class="bs-ft"><button class="btn-prim" onclick="PFM.close()">Fermer</button></div>`;document.getElementById('pf-body').innerHTML=h;document.getElementById('pf-ov').style.display='flex';document.body.style.overflow='hidden';},close(){document.getElementById('pf-ov').style.display='none';document.body.style.overflow='';try{renderProcList();}catch(e){}}};
+/* NOTE: f.def, r.l, r.v, f.piege in PFM are static editorial text — not escaped */
+const PFM={open(id){const f=PB.find(x=>x.id===id);if(!f)return;const rows=Array.isArray(f.tab)?f.tab:[];let h=`<span class="bs-pill"></span><div class="bs-hd"><div class="bs-hd-row"><div style="flex:1"><div style="font-size:11px;color:var(--t3);font-family:'JetBrains Mono',monospace;margin-bottom:3px">${eh(f.ref)}</div><div style="font-size:17px;font-weight:900;color:var(--t1)">${eh(f.nm)}</div></div><button class="bs-close" onclick="PFM.close()">✕</button></div></div><div class="bs-bd"><div style="font-size:13px;color:var(--t2);line-height:1.65;margin-bottom:14px;padding:11px 13px;background:var(--bg-2);border-radius:10px">${f.def||''}</div>`;rows.forEach(r=>{h+=`<div class="pr-row"><div class="pr-l">${r.l}</div><div class="pr-v">${r.v}</div></div>`;});if(f.piege)h+=`<div class="fm-piege" style="margin-top:14px"><div class="fm-piege-l">⚠ Piège</div><div style="font-size:12px;color:var(--t2);line-height:1.6">${f.piege}</div></div>`;h+=`</div><div class="bs-ft"><button class="btn-prim" onclick="PFM.close()">Fermer</button></div>`;document.getElementById('pf-body').innerHTML=h;document.getElementById('pf-ov').style.display='flex';document.body.style.overflow='hidden';},close(){document.getElementById('pf-ov').style.display='none';document.body.style.overflow='';try{renderProcList();}catch(e){}}};
 
 function renderQDJ(){
   const el=document.getElementById('h-qdj');if(!el)return;
@@ -2631,11 +2833,12 @@ function openAnnale(id){
   save();
 
   let html=`<div style="margin-bottom:16px">
-    <div style="font-size:11px;font-weight:700;color:var(--accent-l);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">${a.matiere||'Annale'}</div>
-    <h3 style="font-size:19px;font-weight:900;color:var(--t1);margin-bottom:4px">${a.titre}</h3>
-    ${a.duree?`<div style="font-size:12px;color:var(--t3);font-family:var(--fm,monospace)">${a.duree}</div>`:''}
+    <div style="font-size:11px;font-weight:700;color:var(--accent-l);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">${eh(a.matiere||'Annale')}</div>
+    <h3 style="font-size:19px;font-weight:900;color:var(--t1);margin-bottom:4px">${eh(a.titre)}</h3>
+    ${a.duree?`<div style="font-size:12px;color:var(--t3);font-family:var(--fm,monospace)">${eh(a.duree)}</div>`:''}
   </div>`;
 
+  /* NOTE: a.contexte, q.corrige, a.corrige_global may contain editorial HTML — not escaped */
   if(a.contexte){
     html+=`<div style="background:rgba(77,143,255,.07);border-left:3px solid var(--accent-l);border-radius:0 10px 10px 0;padding:11px 13px;margin-bottom:14px;font-size:13px;color:var(--t2);line-height:1.7">${a.contexte}</div>`;
   }
@@ -2644,8 +2847,8 @@ function openAnnale(id){
     html+=`<div style="font-size:10px;font-weight:900;color:var(--gold);text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px;margin-top:4px">QUESTIONS</div>`;
     html+=a.questions.map((q,i)=>{
       let qhtml=`<div style="background:var(--bg-2);border:1px solid rgba(77,143,255,.1);border-radius:12px;padding:13px 14px;margin-bottom:8px">
-        <div style="font-size:12px;font-weight:800;color:var(--accent-l);margin-bottom:6px">Question ${i+1}${q.pts?' ('+q.pts+')':''}</div>
-        <div style="font-size:13px;color:var(--t1);line-height:1.65;margin-bottom:8px">${q.q}</div>`;
+        <div style="font-size:12px;font-weight:800;color:var(--accent-l);margin-bottom:6px">Question ${i+1}${q.pts?' ('+eh(q.pts)+')':''}</div>
+        <div style="font-size:13px;color:var(--t1);line-height:1.65;margin-bottom:8px">${eh(q.q)}</div>`;
       if(q.corrige){
         qhtml+=`<details style="margin-top:8px"><summary style="font-size:11px;font-weight:700;color:var(--ok);cursor:pointer">Voir le corrigé</summary>
           <div style="font-size:12.5px;color:var(--t2);line-height:1.7;margin-top:8px;padding-top:8px;border-top:1px solid rgba(77,143,255,.1)">${q.corrige}</div>
@@ -4094,7 +4297,7 @@ input,select,textarea,.inp{font-size:16px!important;box-sizing:border-box!import
 .lp-card.done .lp-card-footer{background:rgba(212,175,55,.05)}
 </style></head><body>
 ${content}
-<footer>OPJ Elite v50.0 — Fiche pédagogique — À usage privé uniquement</footer>
+<footer>OPJ Elite v57.0 — Fiche pédagogique — À usage privé uniquement</footer>
 </body></html>`);
     w.document.close();w.focus();
     setTimeout(()=>{w.print();},500);
@@ -4285,6 +4488,7 @@ const BADGES={
     if(newUnlocks.length){save();newUnlocks.forEach((b,i)=>setTimeout(()=>BADGES.showModal(b),i*1400));}
   },
   showModal(b){
+    try{AudioFX.badge();}catch(e){}
     const ov=document.getElementById('badge-unlock-ov');if(!ov)return;
     document.getElementById('bul-emoji').textContent=b.emoji;
     document.getElementById('bul-name').textContent=b.name;
@@ -4375,7 +4579,7 @@ const SHIELD={
 /* ─── BLITZ VRAI/FAUX ─── */
 const BLITZ_ASSERTIONS=[
   {q:"La GAV initiale est de 48h en droit commun",ans:false,expl:"24h initiales seulement. 48h = total après prolongation (art. 63 CPP)."},
-  {q:"La tentative de contravention est punissable",ans:false,expl:"La tentative n'est JAMAIS punissable pour les contraventions (art. 121-4 CP)."},
+  {q:"La tentative de contravention est punissable",ans:false,expl:"La tentative n'est JAMAIS punissable pour les contraventions (art. 121-5 CP)."},
   {q:"La présence du bâtonnier est obligatoire lors d'une perquisition dans un cabinet d'avocat",ans:true,expl:"Art. 56-1 CPP : présence du bâtonnier ou son délégué obligatoire."},
   {q:"La prescription d'un délit est de 6 ans depuis la loi du 27 février 2017",ans:true,expl:"La loi du 27/02/2017 a porté la prescription des délits de 3 à 6 ans."},
   {q:"En flagrance, les perquisitions sont limitées à l'horaire 6h-21h",ans:false,expl:"En flagrance, les perquisitions peuvent avoir lieu 24h/24 (art. 59 al.3 CPP)."},
@@ -4577,7 +4781,7 @@ const GS={
     CHAPTERS.flatMap(c=>c.lessons).filter(l=>l.name.toLowerCase().includes(ql)||l.ref.toLowerCase().includes(ql)).slice(0,4)
       .forEach(l=>results.push({type:'lecon',icon:'📚',main:l.name,sub:l.ref,action:`openLesson('${l.id}')`}));
     QB.filter(x=>x.q.toLowerCase().includes(ql)).slice(0,3)
-      .forEach(q=>results.push({type:'qcm',icon:'🎯',main:q.q.slice(0,55)+(q.q.length>55?'…':''),sub:q.art,action:`startSession('${q.cat}')`}));
+      .forEach(q=>results.push({type:'qcm',icon:'🎯',main:eh(q.q.slice(0,55)+(q.q.length>55?'…':'')),sub:eh(q.art),action:`startSession('${q.cat}')`}));
     FB.filter(f=>f.nm.toLowerCase().includes(ql)||f.ref.toLowerCase().includes(ql)).slice(0,3)
       .forEach(f=>results.push({type:'fiche',icon:'⚖️',main:f.nm,sub:f.ref,action:`openFiche('${f.id}')`}));
     if(typeof PB!=='undefined')PB.filter(p=>p.nm.toLowerCase().includes(ql)).slice(0,2)
@@ -4653,12 +4857,13 @@ const EB={
   },
   _render(){
     const s=EB._state.scenario;
+    /* NOTE: s.dossier is editorial HTML content — not escaped */
     let html=`<div class="lesson-intro mb16">${s.dossier}</div>`;
     html+=`<div class="sect-label">Questions</div>`;
     html+=s.questions.map((q,i)=>`
       <div class="card mb12">
-        <div class="text-xs text-accent font-mono fw-700 mb4">Question ${i+1} ${q.pts?'· '+q.pts:''}</div>
-        <div class="text-sm mb12" style="line-height:1.7">${q.q}</div>
+        <div class="text-xs text-accent font-mono fw-700 mb4">Question ${i+1} ${q.pts?'· '+eh(q.pts):''}</div>
+        <div class="text-sm mb12" style="line-height:1.7">${eh(q.q)}</div>
         <textarea class="inp" id="eb-ans-${i}" placeholder="Votre réponse…" rows="4" style="resize:vertical;font-size:13px;line-height:1.6"></textarea>
       </div>`).join('');
     html+=`<button class="btn btn-p mt16" onclick="EB._finish()">✓ Remettre ma copie</button>`;
@@ -4673,8 +4878,8 @@ const EB={
     html+=s.questions.map((q,i)=>{
       const ans=document.getElementById('eb-ans-'+i)?.value||'(pas de réponse)';
       return`<div class="card mb12">
-        <div class="text-xs text-accent font-mono fw-700 mb4">Question ${i+1} ${q.pts?'· '+q.pts:''}</div>
-        <div class="text-sm mb8">${q.q}</div>
+        <div class="text-xs text-accent font-mono fw-700 mb4">Question ${i+1} ${q.pts?'· '+eh(q.pts):''}</div>
+        <div class="text-sm mb8">${eh(q.q)}</div>
         ${ans!=='(pas de réponse)'?`<div class="lesson-block" style="margin-bottom:8px"><span class="text-xs text-muted fw-700 mb4" style="display:block">Votre réponse</span>${eh(ans)}</div>`:''}
         <div class="lesson-keys"><div class="lesson-keys-lbl">✓ Éléments attendus</div><div class="lesson-key-item">${q.corrige}</div></div>
       </div>`;
@@ -4729,13 +4934,14 @@ const QUALIF={
     const sc=queue[idx];
     const q=sc.questions[qIdx];
     document.getElementById('qualif-counter').textContent=(idx+1)+'/'+queue.length+' — Q'+(qIdx+1)+'/'+sc.questions.length;
+    /* NOTE: sc.texte, q.c are editorial content blocks — not escaped */
     let html=`<div class="card card-accent mb12">
       <div class="text-xs text-accent font-mono fw-700 mb4">📋 SCÉNARIO ${idx+1}</div>
-      <div class="fw-700 mb8">${sc.titre}</div>
+      <div class="fw-700 mb8">${eh(sc.titre)}</div>
       <div class="qualif-scenario">${sc.texte}</div>
     </div>`;
     html+=`<div class="text-sm fw-700 mb8">Question ${qIdx+1} :</div>`;
-    html+=`<div class="card mb12"><div style="line-height:1.7;font-size:13px">${q.q}</div></div>`;
+    html+=`<div class="card mb12"><div style="line-height:1.7;font-size:13px">${eh(q.q)}</div></div>`;
     if(QUALIF._s.phase==='question'){
       html+=`<textarea class="inp mb12" id="qualif-ans" placeholder="Votre réponse juridique…" rows="4" style="resize:vertical;font-size:13px"></textarea>`;
       html+=`<button class="btn btn-p" onclick="QUALIF._showCorrection()">Voir le corrigé →</button>`;
@@ -5037,6 +5243,7 @@ function renderFSRSDueWidget(){}// legacy compat
 (async function boot(){
   window.addEventListener('message', function(e) {
     if (!e.data) return;
+    if (e.origin !== window.location.origin) return;
     if (e.data.type === 'auth') {
       window.finishAuth(e.data.name || 'Officier');
     }

@@ -1,52 +1,52 @@
 /* ═══════════════════════════════════════════════════════
-   OPJ ELITE — Service Worker v56 (nettoyage stubs vides du cache)
-   Chemins corrigés pour correspondre à la structure réelle :
-   /css/  /js/  /js/data/  /js/core/  /icons/
+   OPJ ELITE — Service Worker v57
+   Chemins relatifs pour GitHub Pages (sous-dossier).
+   Toutes les URLs sont résolues via self.registration.scope.
    ═══════════════════════════════════════════════════════ */
 
-const CACHE = 'opj-v56';
+const CACHE = 'opj-v57';
 
 const STATIC = [
-  '/',
-  '/index.html',
-  '/manifest.json',
+  './',
+  './index.html',
+  './manifest.json',
 
   /* CSS */
-  '/css/tokens.css',
-  '/css/components.css',
-  '/css/pages.css',
+  './css/tokens.css',
+  './css/components.css',
+  './css/pages.css',
 
   /* JS — core (chargés en premier) */
-  '/js/core/fsrs.js',
-  '/js/core/audio.js',
+  './js/core/fsrs.js',
+  './js/core/audio.js',
 
   /* JS — app principal */
-  '/js/app.js',
+  './js/app.js',
 
   /* JS — données */
-  '/js/data/questions.js',
-  '/js/data/flashcards.js',
-  '/js/data/chapters.js',
-  '/js/data/procedures.js',
-  '/js/data/annales.js',
-  '/js/data/printsheets.js',
+  './js/data/questions.js',
+  './js/data/flashcards.js',
+  './js/data/chapters.js',
+  './js/data/procedures.js',
+  './js/data/annales.js',
+  './js/data/printsheets.js',
 
   /* Icons PWA */
-  '/icons/icon-192.png',
-  '/icons/icon-512.png'
+  './icons/icon-192.png',
+  './icons/icon-512.png'
 ];
 
 /* ── Install : mise en cache des assets statiques ── */
 self.addEventListener('install', e => {
   e.waitUntil(
     caches.open(CACHE).then(c => {
-      /* addAll échoue si un fichier est absent.
-         On utilise une boucle avec gestion d'erreur individuelle
-         pour ne pas bloquer l'install si un asset est manquant. */
       return Promise.allSettled(
-        STATIC.map(url => c.add(url).catch(() => {
-          console.warn('[SW] Cache miss (non bloquant):', url);
-        }))
+        STATIC.map(rel => {
+          const url = new URL(rel, self.registration.scope).href;
+          return c.add(url).catch(() => {
+            console.warn('[SW] Cache miss (non bloquant):', url);
+          });
+        })
       );
     })
   );
@@ -93,7 +93,7 @@ self.addEventListener('fetch', e => {
       }).catch(() => {
         /* Offline fallback : retourner index.html pour les navigations */
         if (e.request.mode === 'navigate') {
-          return caches.match('/index.html');
+          return caches.match(new URL('./index.html', self.registration.scope).href);
         }
       });
     })

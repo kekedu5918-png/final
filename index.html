@@ -3,15 +3,21 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
-<title>OPJ Elite v52</title>
+<title>OPJ Elite</title>
 <link rel="icon" href="./icons/icon-192.png" type="image/png">
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#060910">
+<meta name="description" content="La référence de préparation à l'examen OPJ — QCM, leçons, flashcards, spaced repetition.">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="./icons/icon-192.png">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./css/tokens.css">
   <link rel="stylesheet" href="./css/components.css">
   <link rel="stylesheet" href="./css/pages.css">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html,body{background:#03050c;color:#e8eeff}
+html,body{background:var(--bg-0);color:var(--t1)}
 body{font-family:'Inter',system-ui,sans-serif;-webkit-font-smoothing:antialiased;overflow-x:hidden}
 button{font-family:inherit;cursor:pointer;border:none;background:none}
 input{font-family:inherit}
@@ -230,7 +236,7 @@ body.app-shell{display:flex;flex-direction:column;min-height:100dvh}
 .page.leaving{display:flex;opacity:0;pointer-events:none;transition:opacity 80ms ease;}
 .page.entering{opacity:0;}
 
-.app-hdr{flex-shrink:0;height:52px;padding:0 16px;background:rgba(3,5,12,.92);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border-bottom:1px solid var(--brd);display:flex;align-items:center;gap:10px;position:relative}
+.app-hdr{flex-shrink:0;height:52px;padding:0 16px;background:var(--bg-header);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border-bottom:1px solid var(--brd);display:flex;align-items:center;gap:10px;position:relative}
 .app-hdr::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--accent) 30%,var(--accent-l) 55%,var(--gold) 80%,transparent);opacity:.42}
 .hdr-logo{font-family:'Syne',system-ui,sans-serif;font-size:16px;font-weight:800;color:var(--t1);letter-spacing:-.025em;flex:1}
 .hdr-logo b{font-style:normal;color:var(--accent-l)}
@@ -249,7 +255,7 @@ body.app-shell{display:flex;flex-direction:column;min-height:100dvh}
   flex-shrink:0;
   height:calc(60px + env(safe-area-inset-bottom));
   padding-bottom:env(safe-area-inset-bottom);
-  background:rgba(3,5,12,.95);
+  background:var(--bg-nav);
   backdrop-filter:blur(24px);
   -webkit-backdrop-filter:blur(24px);
   border-top:1px solid var(--brd);
@@ -505,7 +511,7 @@ body.app-shell{display:flex;flex-direction:column;min-height:100dvh}
   display:none;position:fixed;inset:0;z-index:var(--z-critical);
   align-items:center;justify-content:center;
   flex-direction:column;
-  background:rgba(3,5,12,.92);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  background:var(--bg-overlay);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
   padding:24px;cursor:pointer;
 }
 .levelup-ov[aria-hidden="false"]{display:flex!important}
@@ -513,7 +519,7 @@ body.app-shell{display:flex;flex-direction:column;min-height:100dvh}
   pointer-events:auto;cursor:default;
   max-width:360px;width:100%;text-align:center;
   padding:32px 26px 28px;
-  background:linear-gradient(165deg,rgba(27,107,255,.12),rgba(3,5,12,.95));
+  background:linear-gradient(165deg,rgba(27,107,255,.12),var(--bg-0));
   border:1px solid rgba(77,143,255,.35);
   border-radius:var(--r-3xl);
   box-shadow:0 0 0 1px rgba(255,255,255,.06) inset,0 24px 48px rgba(0,0,0,.5),0 0 40px rgba(27,107,255,.15);
@@ -675,11 +681,32 @@ body.app-shell{display:flex;flex-direction:column;min-height:100dvh}
   <div class="streak-warn-txt">🔥 Ton streak risque de s'arrêter — fais 1 question !</div>
   <button type="button" class="streak-warn-btn" onclick="tapContinueHome()">Réviser maintenant</button>
 </div>
+
+<div class="flash-express-card" id="flash-express-card">
+  <div class="fe-left">
+    <div class="fe-icon">⚡</div>
+    <div class="fe-text">
+      <div class="fe-title">Flash Express</div>
+      <div class="fe-sub">3 questions · tes points faibles · 2 min</div>
+    </div>
+  </div>
+  <button class="fe-btn" onclick="startFlashExpress()">GO</button>
+</div>
+
+<div class="placement-card" id="placement-card" style="display:none">
+  <div class="placement-icon">🎯</div>
+  <div class="placement-text">
+    <div class="placement-title">Test de niveau</div>
+    <div class="placement-sub">10 questions pour personnaliser ton parcours</div>
+  </div>
+  <button class="placement-btn" onclick="startPlacementTest()">Commencer</button>
+</div>
+
 <div id="h-qdj" class="home-qdj-gold"></div>
 <div id="patch-missions" class="missions missions-card"></div>
 <div class="countdown" id="h-exam-countdown"><div class="cd-num-wrap"><div class="cd-days" id="h-exam-days">—</div></div><div class="cd-copy"><div class="cd-lbl">Jours avant l'examen OPJ</div><div class="cd-sub" id="h-exam-session">SESSION JUIN 2026</div></div></div>
 <div id="h-weak-widget"></div>
-<div class="pro-teaser pro-teaser--home" id="h-pro-teaser" onclick="P&&P.showPro()"><div class="pro-crown">&#x1F451;</div><div class="pro-body"><div class="pro-ttl">OPJ Elite PRO</div><div class="pro-sub">Débloque tout le contenu premium</div></div><div class="pro-arr">></div></div>
+<div class="pro-teaser pro-teaser--home" id="h-pro-teaser" role="button" tabindex="0" onclick="P&&P.showPro()"><div class="pro-crown">&#x1F451;</div><div class="pro-body"><div class="pro-ttl">OPJ Elite PRO</div><div class="pro-sub">Débloque tout le contenu premium</div></div><div class="pro-arr">></div></div>
 </div>
 </div>
 
@@ -708,7 +735,7 @@ body.app-shell{display:flex;flex-direction:column;min-height:100dvh}
       transition:width .6s ease"></div>
   </div>
 </div>
-<div class="search" style="margin-bottom:14px"><span class="search-ic">&#x2315;</span><input id="global-search" placeholder="Leçons, QCM, fiches, articles CPP…" oninput="GS&&GS.onInput(this.value)"><button class="search-clear" id="search-clear-btn" onclick="GS&&GS.clear()">✕</button></div>
+<div class="search" style="margin-bottom:14px"><span class="search-ic">&#x2315;</span><input id="global-search" placeholder="Leçons, QCM, fiches, articles CPP…" aria-label="Leçons, QCM, fiches, articles CPP…" oninput="GS&&GS.onInput(this.value)"><button class="search-clear" id="search-clear-btn" onclick="GS&&GS.clear()" aria-label="Fermer">✕</button></div>
 <div id="search-results" style="display:none;position:relative;z-index:50"></div>
 <!-- FIX : id="chapters-list" (était "lecons-list") -->
 <div id="chapters-list"></div>
@@ -773,7 +800,7 @@ body.app-shell{display:flex;flex-direction:column;min-height:100dvh}
       <div><div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:var(--t1)">Infractions</div><div id="fiches-summary" style="font-size:11px;color:var(--t3);margin-top:3px">Chargement...</div></div>
     </div>
     <div style="height:3px;background:var(--bg-3);border-radius:100px;overflow:hidden;margin-top:8px"><div id="fiches-prog-bar" style="height:100%;border-radius:100px;background:linear-gradient(90deg,var(--accent),var(--gold));width:0%;transition:width .6s ease"></div></div>
-    <div style="margin-top:10px;position:relative"><input id="fiches-search" class="search-inp" placeholder="Rechercher une infraction..." oninput="renderBubbles()" style="padding-left:16px"></div>
+    <div style="margin-top:10px;position:relative"><input id="fiches-search" class="search-inp" placeholder="Rechercher une infraction..." aria-label="Rechercher une infraction..." oninput="renderBubbles()" style="padding-left:16px"></div>
   </div>
   <div id="bubble-grid"></div>
 </div>
@@ -785,7 +812,7 @@ body.app-shell{display:flex;flex-direction:column;min-height:100dvh}
 </div>
 <div id="rtab-entrainement-content" style="display:none">
   <div class="slbl">Entraînement oral</div>
-  <div class="mode-card mode-card--no-arrow" onclick="startOralMode()">
+  <div class="mode-card mode-card--no-arrow" onclick="startOralMode()" role="button" tabindex="0">
     <div class="mode-card-ico">🎤</div>
     <div class="mode-card-body">
       <div class="mode-card-title">Entraînement Oral</div>
@@ -821,13 +848,13 @@ body.app-shell{display:flex;flex-direction:column;min-height:100dvh}
 <div class="scroll-area">
 <div style="margin-bottom:16px"><div style="font-family:'Syne',system-ui,sans-serif;font-size:28px;font-weight:800;color:var(--t1);letter-spacing:-.03em;margin-bottom:3px">Mode Examen</div><div style="font-size:12px;color:var(--t2)">Conditions réelles — Chrono — Analyse</div></div>
 <div class="slbl">Sessions chronométrées</div>
-<div class="mcard" onclick="startExamSession(40,60)"><div class="m-ico2" style="background:var(--err-bg)">&#x1F9E0;</div><div class="m-inf"><h4>QCM Intensif</h4><p>40 questions — 60 minutes — Toutes matières</p><div class="mtags"><span class="mt b">40 QCM</span><span class="mt o">60 min</span><span class="mt r">Difficile</span></div></div></div>
-<div class="mcard" onclick="startExamSession(20,30)"><div class="m-ico2" style="background:rgba(27,107,255,.1)">&#x26A1;</div><div class="m-inf"><h4>Session Express</h4><p>20 questions — 30 minutes — Révision quotidienne</p><div class="mtags"><span class="mt b">20 QCM</span><span class="mt o">30 min</span></div></div></div>
-<div class="mcard" onclick="startFlashSession()"><div class="m-ico2" style="background:var(--ok-bg)">&#x1F3AF;</div><div class="m-inf"><h4>Flash Session</h4><p>10 questions — Thèmes faibles — Sans chrono</p><div class="mtags"><span class="mt g">10 QCM</span><span class="mt g">Sans chrono</span></div></div></div>
-<div class="mcard" style="border-color:var(--brd-gold)" onclick="EB.start()"><div class="m-ico2" style="background:rgba(200,146,26,.1)">&#x1F4CB;</div><div class="m-inf"><h4>Examen blanc</h4><p>Dossier de faits + QCM + correction détaillée</p><div class="mtags"><span class="mt gd">Dossier</span><span class="mt gd">Correction</span></div></div></div>
+<div class="mcard" onclick="startExamSession(40,60)" role="button" tabindex="0"><div class="m-ico2" style="background:var(--err-bg)">&#x1F9E0;</div><div class="m-inf"><h4>QCM Intensif</h4><p>40 questions — 60 minutes — Toutes matières</p><div class="mtags"><span class="mt b">40 QCM</span><span class="mt o">60 min</span><span class="mt r">Difficile</span></div></div></div>
+<div class="mcard" onclick="startExamSession(20,30)" role="button" tabindex="0"><div class="m-ico2" style="background:rgba(27,107,255,.1)">&#x26A1;</div><div class="m-inf"><h4>Session Express</h4><p>20 questions — 30 minutes — Révision quotidienne</p><div class="mtags"><span class="mt b">20 QCM</span><span class="mt o">30 min</span></div></div></div>
+<div class="mcard" onclick="startFlashSession()" role="button" tabindex="0"><div class="m-ico2" style="background:var(--ok-bg)">&#x1F3AF;</div><div class="m-inf"><h4>Flash Session</h4><p>10 questions — Thèmes faibles — Sans chrono</p><div class="mtags"><span class="mt g">10 QCM</span><span class="mt g">Sans chrono</span></div></div></div>
+<div class="mcard" style="border-color:var(--brd-gold)" role="button" tabindex="0" onclick="EB.start()"><div class="m-ico2" style="background:rgba(200,146,26,.1)">&#x1F4CB;</div><div class="m-inf"><h4>Examen blanc</h4><p>Dossier de faits + QCM + correction détaillée</p><div class="mtags"><span class="mt gd">Dossier</span><span class="mt gd">Correction</span></div></div></div>
 <div class="slbl">Exercices procéduraux</div>
-<div class="mcard" onclick="QUALIF.start()"><div class="m-ico2" style="background:rgba(124,58,237,.1)">&#x2696;&#xFE0F;</div><div class="m-inf"><h4>Qualifie les faits</h4><p>Scénario — qualification — article — peine</p><div class="mtags"><span class="mt v">10 scénarios</span><span class="mt v">Progressif</span></div></div></div>
-<div class="mcard" onclick="startCRTimer()"><div class="m-ico2" style="background:rgba(124,58,237,.1)">&#x1F4DE;</div><div class="m-inf"><h4>Simulateur CR Parquet</h4><p>40 min préparation + 20 min oral — Timer auto</p><div class="mtags"><span class="mt v">Épreuve orale</span><span class="mt b">Timer 2 phases</span></div></div></div>
+<div class="mcard" role="button" tabindex="0" onclick="QUALIF.start()"><div class="m-ico2" style="background:rgba(124,58,237,.1)">&#x2696;&#xFE0F;</div><div class="m-inf"><h4>Qualifie les faits</h4><p>Scénario — qualification — article — peine</p><div class="mtags"><span class="mt v">10 scénarios</span><span class="mt v">Progressif</span></div></div></div>
+<div class="mcard" role="button" tabindex="0" onclick="startCRTimer()"><div class="m-ico2" style="background:rgba(124,58,237,.1)">&#x1F4DE;</div><div class="m-inf"><h4>Simulateur CR Parquet</h4><p>40 min préparation + 20 min oral — Timer auto</p><div class="mtags"><span class="mt v">Épreuve orale</span><span class="mt b">Timer 2 phases</span></div></div></div>
 </div>
 </div>
 
@@ -897,8 +924,15 @@ body.app-shell{display:flex;flex-direction:column;min-height:100dvh}
     <div class="pstat-l">Streak record</div>
   </div>
 </div>
+<div class="profil-section">
+  <h4 class="sec-hd-sm">Activité 30 jours</h4>
+  <div id="pr-prog-30"></div>
+</div>
 <div class="slbl">Activité 30 jours</div>
 <div class="act-chart"><div class="act-bars" id="pr-activity-bars" style="display:flex;align-items:flex-end;gap:2px;height:48px;padding:0 4px"></div><div class="act-lbl" id="pr-activity-lbl">Activité récente</div></div>
+<div class="profil-section">
+  <div id="pr-readiness"></div>
+</div>
 <div class="slbl">Radar compétences</div>
 <div style="display:flex;justify-content:center;margin-bottom:12px"><div id="pr-radar"></div></div>
 <div class="slbl">Badges</div>
@@ -906,10 +940,10 @@ body.app-shell{display:flex;flex-direction:column;min-height:100dvh}
 <div id="patch-errors"></div>
 <div class="slbl">Paramètres</div>
 <div class="pmenu">
-  <div class="pmenu-item" onclick="P&&P.showPro()"><div class="pmenu-ico">&#x1F451;</div><div class="pmenu-lbl" style="color:var(--gold-l)">OPJ Elite PRO</div><div class="pmenu-arr">></div></div>
-  <div class="pmenu-item" onclick="showGrades()"><div class="pmenu-ico">&#x1F3C5;</div><div class="pmenu-lbl">Tableau des grades</div><div class="pmenu-arr">></div></div>
-  <div class="pmenu-item" onclick="THEME28&&THEME28.toggle()"><div class="pmenu-ico">&#x1F319;</div><div class="pmenu-lbl" id="theme-label">Mode clair</div><div class="pmenu-arr">></div></div>
-  <div class="pmenu-item" onclick="showAccountModal()"><div class="pmenu-ico">&#x1F464;</div><div class="pmenu-lbl">Mon compte</div><div class="pmenu-arr">></div></div>
+  <div class="pmenu-item" role="button" tabindex="0" onclick="P&&P.showPro()"><div class="pmenu-ico">&#x1F451;</div><div class="pmenu-lbl" style="color:var(--gold-l)">OPJ Elite PRO</div><div class="pmenu-arr">></div></div>
+  <div class="pmenu-item" role="button" tabindex="0" onclick="showGrades()"><div class="pmenu-ico">&#x1F3C5;</div><div class="pmenu-lbl">Tableau des grades</div><div class="pmenu-arr">></div></div>
+  <div class="pmenu-item" role="button" tabindex="0" onclick="THEME28&&THEME28.toggle()"><div class="pmenu-ico">&#x1F319;</div><div class="pmenu-lbl" id="theme-label">Mode clair</div><div class="pmenu-arr">></div></div>
+  <div class="pmenu-item" role="button" tabindex="0" onclick="showAccountModal()"><div class="pmenu-ico">&#x1F464;</div><div class="pmenu-lbl">Mon compte</div><div class="pmenu-arr">></div></div>
   <div class="pmenu-item"><div class="pmenu-ico" style="font-size:11px">v52</div><div class="pmenu-lbl" style="color:var(--t2);font-size:12px">OPJ Elite</div></div>
 </div>
 </div>
@@ -918,12 +952,12 @@ body.app-shell{display:flex;flex-direction:column;min-height:100dvh}
 </div><!-- /phone#app -->
 
 <!-- ONBOARDING PREMIUM — iframe vers onboarding.html -->
-<div id="onboarding" style="display:flex;position:fixed;inset:0;z-index:900;background:#03050c;">
+<div id="onboarding" style="display:flex;position:fixed;inset:0;z-index:900;background:var(--bg-0);">
   <iframe
     id="onboarding-frame"
     src="./onboarding.html"
-    style="width:100%;height:100%;border:none;background:#03050c;"
-    allowtransparency="true">
+    title="Connexion OPJ Elite"
+    style="width:100%;height:100%;border:none;background:var(--bg-0);">
   </iframe>
 </div>
 
@@ -937,28 +971,28 @@ body.app-shell{display:flex;flex-direction:column;min-height:100dvh}
 </nav>
 
 <!-- OVERLAYS -->
-<div id="lec-ov" class="bs-ov" onclick="if(event.target===this)LEC.close()"><div id="lec-bd" class="bs-bd"></div></div>
-<div id="lp-ov" class="bs-ov" onclick="if(event.target===this)LP.close()"><div id="lp-bd" class="bs-bd"></div></div>
-<div id="lesson-ov" class="bs-ov" onclick="if(event.target===this)closeLesson()"><div id="lesson-modal-body" class="bs-bd"></div></div>
-<div id="fiche-ov" style="display:none;position:fixed;inset:0;z-index:var(--z-modal);align-items:flex-end;background:rgba(0,0,0,.68);backdrop-filter:blur(10px)" onclick="if(event.target===this)closeFiche()"><div id="fiche-body" style="width:100%;max-height:92dvh;background:var(--bg-1);border-radius:24px 24px 0 0;overflow-y:auto;padding-bottom:env(safe-area-inset-bottom)"></div></div>
-<div id="ann-ov" style="display:none;position:fixed;inset:0;z-index:var(--z-modal);flex-direction:column;background:var(--bg-0)"><div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--brd)"><div style="font-family:'Syne',sans-serif;font-size:17px;font-weight:800;color:var(--t1)">Annale</div><button onclick="closeAnnale()" style="color:var(--t2);background:none;border:none;font-size:20px;cursor:pointer">✕</button></div><div id="ann-body" style="flex:1;overflow-y:auto;padding:16px"></div></div>
-<div id="pf-ov" style="display:none;position:fixed;inset:0;z-index:var(--z-modal);align-items:flex-end;background:rgba(0,0,0,.68);backdrop-filter:blur(10px)" onclick="if(event.target===this)PFM.close()"><div id="pf-body" style="width:100%;max-height:92dvh;background:var(--bg-1);border-radius:24px 24px 0 0;overflow-y:auto;padding-bottom:env(safe-area-inset-bottom)"></div></div>
-<div id="eval-ov" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:var(--z-toast);background:rgba(0,0,0,.78);backdrop-filter:blur(12px);padding:16px"><div class="modal-box" style="background:var(--bg-1);border-radius:var(--r-3xl);padding:22px;max-width:460px;width:100%;max-height:88dvh;overflow-y:auto"><div style="font-family:'Syne',sans-serif;font-size:17px;font-weight:800;color:var(--t1);margin-bottom:14px">Auto-évaluation CR</div><div id="eval-list"></div><div id="eval-result" style="display:none;margin-top:12px;text-align:center"></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px"><button class="btn-p" onclick="EVAL.calc()">Calculer</button><button class="btn-ghost" onclick="EVAL.close()">Fermer</button></div></div></div>
-<div id="cr-timer-ov" style="display:none;position:fixed;inset:0;background:rgba(3,5,12,.97);z-index:var(--z-modal);flex-direction:column;align-items:center;justify-content:center;gap:20px"><div id="cr-phase-lbl" style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:var(--t1)">Préparation</div><div id="cr-timer-disp" style="font-family:'JetBrains Mono',monospace;font-size:72px;font-weight:700;color:var(--accent-l);line-height:1">40:00</div><button id="cr-skip-btn" class="btn-sec" style="min-width:180px" onclick="skipCRPhase()">→ Passer à l'oral</button><button class="btn-ghost" onclick="stopCRTimer()">Arrêter</button></div>
-<div id="blitz-ov" style="position:fixed;inset:0;background:var(--bg-0);z-index:var(--z-modal);display:none;flex-direction:column;align-items:center;justify-content:center;padding:24px"><div style="display:flex;align-items:center;gap:10px;width:100%;margin-bottom:20px"><div style="height:5px;flex:1;background:var(--bg-3);border-radius:100px;overflow:hidden"><div id="blitz-timer-fill" style="height:100%;width:100%;border-radius:100px;background:linear-gradient(90deg,var(--ok),var(--warn),var(--err));transition:width .1s linear"></div></div><span id="blitz-timer-display" style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:var(--t3);min-width:24px">60</span><button onclick="BLITZ.stop()" style="color:var(--t3);font-size:18px;background:none;border:none;cursor:pointer">✕</button></div><div id="blitz-counter" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--t3);margin-bottom:16px">1/10</div><div id="blitz-question" style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:var(--t1);text-align:center;line-height:1.45;margin-bottom:28px;max-width:340px"></div><div style="display:flex;gap:14px;width:100%;max-width:340px"><button id="blitz-faux" class="blitz-btn" style="flex:1;padding:16px;border-radius:var(--r-xl);border:none;cursor:pointer;font-size:15px;font-weight:800;background:linear-gradient(135deg,var(--err),#cc2a40);color:#fff" onclick="BLITZ.answer(false)">✗ FAUX</button><button id="blitz-vrai" class="blitz-btn" style="flex:1;padding:16px;border-radius:var(--r-xl);border:none;cursor:pointer;font-size:15px;font-weight:800;background:linear-gradient(135deg,var(--ok),#00a864);color:#fff" onclick="BLITZ.answer(true)">✓ VRAI</button></div></div>
-<div id="blitz-results-ov" style="position:fixed;inset:0;background:var(--bg-0);z-index:calc(var(--z-modal) + 5);display:none;flex-direction:column;align-items:center;justify-content:center;padding:24px"><div style="font-size:52px;margin-bottom:12px" id="blitz-res-emoji">👍</div><div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:900;color:var(--t1);margin-bottom:6px" id="blitz-res-score">0/10</div><div id="blitz-res-xp" style="font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--gold);margin-bottom:16px">+0 XP</div><div id="blitz-review" style="width:100%;max-width:400px;max-height:40vh;overflow-y:auto;margin-bottom:16px"></div><button class="btn-main" onclick="BLITZ.backToMenu()">← Retour</button></div>
-<div id="classify-ov" style="position:fixed;inset:0;background:var(--bg-0);z-index:var(--z-modal);display:none;flex-direction:column"><div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--brd)"><div style="font-family:'Syne',sans-serif;font-size:17px;font-weight:800;color:var(--t1)">Classifie</div><button onclick="CLASSIF.stop()" style="color:var(--t2);background:none;border:none;font-size:20px;cursor:pointer">✕</button></div><div style="flex:1;overflow-y:auto;padding:14px"><div id="classif-items" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px"></div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px"><div style="background:var(--err-bg);border:2px dashed rgba(255,61,87,.3);border-radius:var(--r-l);min-height:120px;padding:8px" ondragover="CLASSIF.dragOver(event,'Crime')" ondragleave="CLASSIF.dragLeave(event)" ondrop="CLASSIF.drop(event,'Crime')" onclick="CLASSIF._selected&&CLASSIF._place(CLASSIF._selected,'Crime')"><div style="font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;color:var(--err);margin-bottom:6px;text-align:center">CRIME</div></div><div style="background:rgba(27,107,255,.07);border:2px dashed rgba(27,107,255,.2);border-radius:var(--r-l);min-height:120px;padding:8px" ondragover="CLASSIF.dragOver(event,'Dlit')" ondragleave="CLASSIF.dragLeave(event)" ondrop="CLASSIF.drop(event,'Dlit')" onclick="CLASSIF._selected&&CLASSIF._place(CLASSIF._selected,'Dlit')"><div style="font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;color:var(--accent-xl);margin-bottom:6px;text-align:center">DÉLIT</div></div><div style="background:var(--warn-bg);border:2px dashed rgba(255,140,66,.25);border-radius:var(--r-l);min-height:120px;padding:8px" ondragover="CLASSIF.dragOver(event,'Contravention')" ondragleave="CLASSIF.dragLeave(event)" ondrop="CLASSIF.drop(event,'Contravention')" onclick="CLASSIF._selected&&CLASSIF._place(CLASSIF._selected,'Contravention')"><div style="font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;color:var(--warn);margin-bottom:6px;text-align:center">CONTRA.</div></div></div></div><div style="padding:10px 14px;border-top:1px solid var(--brd)"><div id="classif-result" style="display:none;text-align:center;margin-bottom:10px"><div style="font-size:22px" id="classif-res-emoji">👍</div><div id="classif-res-score" style="font-size:14px;font-weight:700;margin-top:4px"></div></div><button id="classif-validate-btn" style="display:none;width:100%" class="btn-main" onclick="CLASSIF.validate()">✓ Valider mes réponses</button></div></div>
-<div id="qualif-ov" style="position:fixed;inset:0;background:var(--bg-0);z-index:var(--z-modal);display:none;flex-direction:column"><div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--brd)"><div style="font-family:'Syne',sans-serif;font-size:17px;font-weight:800;color:var(--t1)">Qualifie les Faits</div><div style="display:flex;align-items:center;gap:10px"><span id="qualif-counter" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--t3)">1/3</span><button onclick="QUALIF.stop()" style="color:var(--t2);background:none;border:none;font-size:20px;cursor:pointer">✕</button></div></div><div id="qualif-body" style="flex:1;overflow-y:auto;padding:14px"></div></div>
-<div id="eb-ov" style="position:fixed;inset:0;background:var(--bg-0);z-index:var(--z-modal);display:none;flex-direction:column"><div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--brd)"><div id="eb-title" style="font-family:'Syne',sans-serif;font-size:15px;font-weight:800;color:var(--t1)">Examen Blanc</div><div style="display:flex;align-items:center;gap:10px"><span id="eb-timer" style="font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:700;color:var(--t1)">60:00</span><button onclick="EB.stop()" style="color:var(--t2);background:none;border:none;font-size:20px;cursor:pointer">✕</button></div></div><div id="eb-body" style="flex:1;overflow-y:auto;padding:14px"></div></div>
-<div id="badge-unlock-ov" style="position:fixed;inset:0;background:rgba(0,0,0,.85);backdrop-filter:blur(14px);z-index:var(--z-critical);display:none;align-items:center;justify-content:center;padding:24px"><div style="background:var(--bg-1);border:1px solid rgba(200,146,26,.25);border-radius:var(--r-3xl);padding:32px 24px;text-align:center;max-width:320px;width:100%"><div id="bul-emoji" style="font-size:64px;margin-bottom:10px;display:block">🏆</div><div id="bul-name" style="font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:var(--gold-l);margin-bottom:8px">Badge débloqué</div><div id="bul-desc" style="font-size:13px;color:var(--t2);margin-bottom:20px">Description</div><button class="btn-main" onclick="BADGES.closeModal()">Super !</button></div></div>
-<div id="streak-danger-ov" style="position:fixed;inset:0;background:rgba(255,61,87,.1);z-index:var(--z-toast);display:none;align-items:center;justify-content:center;padding:24px"><div style="background:var(--bg-1);border:1px solid rgba(255,61,87,.25);border-radius:var(--r-3xl);padding:28px;text-align:center;max-width:320px;width:100%"><div style="font-size:52px;margin-bottom:12px">🔥</div><div style="font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:var(--err);margin-bottom:8px">Ton streak est en danger !</div><div id="streak-shield-info" style="font-size:13px;color:var(--t2);margin-bottom:16px"></div><button id="use-shield-btn" class="btn-main" style="display:none;margin-bottom:8px" onclick="SHIELD.useShield()">🛡️ Utiliser un bouclier</button><button class="btn-ghost btn-full" onclick="SHIELD.dismiss()">Continuer quand même</button></div></div>
-<div id="pro-modal-ov" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:var(--z-toast);background:rgba(0,0,0,.8);backdrop-filter:blur(12px);padding:16px"><div style="background:var(--bg-1);border:1px solid rgba(200,146,26,.22);border-radius:var(--r-3xl);padding:24px;max-width:400px;width:100%;max-height:88dvh;overflow-y:auto"><div style="text-align:center;margin-bottom:16px"><div style="font-size:52px;margin-bottom:10px">👑</div><div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:900;color:var(--gold-l);margin-bottom:6px">OPJ Elite PRO</div><div style="font-size:13px;color:var(--t2)">Tout le contenu, sans limite</div></div><button class="btn-gold" onclick="P.buy()" style="margin-bottom:8px">S'abonner maintenant</button><button class="btn-ghost btn-full" onclick="P.hidePro()">Fermer</button></div></div>
-<div id="pay-modal-ov" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:calc(var(--z-toast) + 1);background:rgba(0,0,0,.85);backdrop-filter:blur(14px);padding:16px"><div style="background:var(--bg-1);border-radius:var(--r-3xl);padding:24px;max-width:400px;width:100%;max-height:88dvh;overflow-y:auto"><div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:var(--t1);margin-bottom:16px">Choisir un plan</div><div id="pay-plan-2m" class="pay-plan" onclick="P.selectPlan('2m')"><div style="font-weight:700;color:var(--t1);margin-bottom:3px">2 mois</div><div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--t3)">59€</div></div><div id="pay-plan-6m" class="pay-plan" onclick="P.selectPlan('6m')"><div style="font-weight:700;color:var(--t1);margin-bottom:3px">6 mois ⭐</div><div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--t3)">149€</div></div><div class="inp-g" style="margin-top:12px"><label class="inp-lbl">Email</label><input type="email" id="pay-email" class="inp" placeholder="votre@email.fr"></div><button class="btn-gold" onclick="P.confirmPay()" style="margin-top:8px">Valider →</button><button class="btn-ghost btn-full" style="margin-top:8px" onclick="P.hidePay()">Annuler</button></div></div>
+<div id="lec-ov" class="bs-ov" role="dialog" aria-modal="true" onclick="if(event.target===this)LEC.close()"><div id="lec-bd" class="bs-bd"></div></div>
+<div id="lp-ov" class="bs-ov" role="dialog" aria-modal="true" onclick="if(event.target===this)LP.close()"><div id="lp-bd" class="bs-bd"></div></div>
+<div id="lesson-ov" class="bs-ov" role="dialog" aria-modal="true" onclick="if(event.target===this)closeLesson()"><div id="lesson-modal-body" class="bs-bd"></div></div>
+<div id="fiche-ov" role="dialog" aria-modal="true" style="display:none;position:fixed;inset:0;z-index:var(--z-modal);align-items:flex-end;background:rgba(0,0,0,.68);backdrop-filter:blur(10px)" onclick="if(event.target===this)closeFiche()"><div id="fiche-body" style="width:100%;max-height:92dvh;background:var(--bg-1);border-radius:24px 24px 0 0;overflow-y:auto;padding-bottom:env(safe-area-inset-bottom)"></div></div>
+<div id="ann-ov" role="dialog" aria-modal="true" style="display:none;position:fixed;inset:0;z-index:var(--z-modal);flex-direction:column;background:var(--bg-0)"><div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--brd)"><div style="font-family:'Syne',sans-serif;font-size:17px;font-weight:800;color:var(--t1)">Annale</div><button onclick="closeAnnale()" style="color:var(--t2);background:none;border:none;font-size:20px;cursor:pointer" aria-label="Fermer">✕</button></div><div id="ann-body" style="flex:1;overflow-y:auto;padding:16px"></div></div>
+<div id="pf-ov" role="dialog" aria-modal="true" style="display:none;position:fixed;inset:0;z-index:var(--z-modal);align-items:flex-end;background:rgba(0,0,0,.68);backdrop-filter:blur(10px)" onclick="if(event.target===this)PFM.close()"><div id="pf-body" style="width:100%;max-height:92dvh;background:var(--bg-1);border-radius:24px 24px 0 0;overflow-y:auto;padding-bottom:env(safe-area-inset-bottom)"></div></div>
+<div id="eval-ov" role="dialog" aria-modal="true" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:var(--z-toast);background:rgba(0,0,0,.78);backdrop-filter:blur(12px);padding:16px"><div class="modal-box" style="background:var(--bg-1);border-radius:var(--r-3xl);padding:22px;max-width:460px;width:100%;max-height:88dvh;overflow-y:auto"><div style="font-family:'Syne',sans-serif;font-size:17px;font-weight:800;color:var(--t1);margin-bottom:14px">Auto-évaluation CR</div><div id="eval-list"></div><div id="eval-result" style="display:none;margin-top:12px;text-align:center"></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px"><button class="btn-p" onclick="EVAL.calc()">Calculer</button><button class="btn-ghost" onclick="EVAL.close()">Fermer</button></div></div></div>
+<div id="cr-timer-ov" role="dialog" aria-modal="true" style="display:none;position:fixed;inset:0;background:var(--bg-overlay);z-index:var(--z-modal);flex-direction:column;align-items:center;justify-content:center;gap:20px"><div id="cr-phase-lbl" style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:var(--t1)">Préparation</div><div id="cr-timer-disp" style="font-family:'JetBrains Mono',monospace;font-size:72px;font-weight:700;color:var(--accent-l);line-height:1">40:00</div><button id="cr-skip-btn" class="btn-sec" style="min-width:180px" onclick="skipCRPhase()">→ Passer à l'oral</button><button class="btn-ghost" onclick="stopCRTimer()">Arrêter</button></div>
+<div id="blitz-ov" role="dialog" aria-modal="true" style="position:fixed;inset:0;background:var(--bg-0);z-index:var(--z-modal);display:none;flex-direction:column;align-items:center;justify-content:center;padding:24px"><div style="display:flex;align-items:center;gap:10px;width:100%;margin-bottom:20px"><div style="height:5px;flex:1;background:var(--bg-3);border-radius:100px;overflow:hidden"><div id="blitz-timer-fill" style="height:100%;width:100%;border-radius:100px;background:linear-gradient(90deg,var(--ok),var(--warn),var(--err));transition:width .1s linear"></div></div><span id="blitz-timer-display" style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:var(--t3);min-width:24px">60</span><button onclick="BLITZ.stop()" style="color:var(--t3);font-size:18px;background:none;border:none;cursor:pointer" aria-label="Fermer">✕</button></div><div id="blitz-counter" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--t3);margin-bottom:16px">1/10</div><div id="blitz-question" style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:var(--t1);text-align:center;line-height:1.45;margin-bottom:28px;max-width:340px"></div><div style="display:flex;gap:14px;width:100%;max-width:340px"><button id="blitz-faux" class="blitz-btn" style="flex:1;padding:16px;border-radius:var(--r-xl);border:none;cursor:pointer;font-size:15px;font-weight:800;background:linear-gradient(135deg,var(--err),#cc2a40);color:#fff" onclick="BLITZ.answer(false)">✗ FAUX</button><button id="blitz-vrai" class="blitz-btn" style="flex:1;padding:16px;border-radius:var(--r-xl);border:none;cursor:pointer;font-size:15px;font-weight:800;background:linear-gradient(135deg,var(--ok),#00a864);color:#fff" onclick="BLITZ.answer(true)">✓ VRAI</button></div></div>
+<div id="blitz-results-ov" role="dialog" aria-modal="true" style="position:fixed;inset:0;background:var(--bg-0);z-index:calc(var(--z-modal) + 5);display:none;flex-direction:column;align-items:center;justify-content:center;padding:24px"><div style="font-size:52px;margin-bottom:12px" id="blitz-res-emoji">👍</div><div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:900;color:var(--t1);margin-bottom:6px" id="blitz-res-score">0/10</div><div id="blitz-res-xp" style="font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--gold);margin-bottom:16px">+0 XP</div><div id="blitz-review" style="width:100%;max-width:400px;max-height:40vh;overflow-y:auto;margin-bottom:16px"></div><button class="btn-main" onclick="BLITZ.backToMenu()">← Retour</button></div>
+<div id="classify-ov" role="dialog" aria-modal="true" style="position:fixed;inset:0;background:var(--bg-0);z-index:var(--z-modal);display:none;flex-direction:column"><div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--brd)"><div style="font-family:'Syne',sans-serif;font-size:17px;font-weight:800;color:var(--t1)">Classifie</div><button onclick="CLASSIF.stop()" style="color:var(--t2);background:none;border:none;font-size:20px;cursor:pointer" aria-label="Fermer">✕</button></div><div style="flex:1;overflow-y:auto;padding:14px"><div id="classif-items" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px"></div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px"><div style="background:var(--err-bg);border:2px dashed rgba(255,61,87,.3);border-radius:var(--r-l);min-height:120px;padding:8px" ondragover="CLASSIF.dragOver(event,'Crime')" ondragleave="CLASSIF.dragLeave(event)" ondrop="CLASSIF.drop(event,'Crime')" onclick="CLASSIF._selected&&CLASSIF._place(CLASSIF._selected,'Crime')"><div style="font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;color:var(--err);margin-bottom:6px;text-align:center">CRIME</div></div><div style="background:rgba(27,107,255,.07);border:2px dashed rgba(27,107,255,.2);border-radius:var(--r-l);min-height:120px;padding:8px" ondragover="CLASSIF.dragOver(event,'Dlit')" ondragleave="CLASSIF.dragLeave(event)" ondrop="CLASSIF.drop(event,'Dlit')" onclick="CLASSIF._selected&&CLASSIF._place(CLASSIF._selected,'Dlit')"><div style="font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;color:var(--accent-xl);margin-bottom:6px;text-align:center">DÉLIT</div></div><div style="background:var(--warn-bg);border:2px dashed rgba(255,140,66,.25);border-radius:var(--r-l);min-height:120px;padding:8px" ondragover="CLASSIF.dragOver(event,'Contravention')" ondragleave="CLASSIF.dragLeave(event)" ondrop="CLASSIF.drop(event,'Contravention')" onclick="CLASSIF._selected&&CLASSIF._place(CLASSIF._selected,'Contravention')"><div style="font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;color:var(--warn);margin-bottom:6px;text-align:center">CONTRA.</div></div></div></div><div style="padding:10px 14px;border-top:1px solid var(--brd)"><div id="classif-result" style="display:none;text-align:center;margin-bottom:10px"><div style="font-size:22px" id="classif-res-emoji">👍</div><div id="classif-res-score" style="font-size:14px;font-weight:700;margin-top:4px"></div></div><button id="classif-validate-btn" style="display:none;width:100%" class="btn-main" onclick="CLASSIF.validate()">✓ Valider mes réponses</button></div></div>
+<div id="qualif-ov" role="dialog" aria-modal="true" style="position:fixed;inset:0;background:var(--bg-0);z-index:var(--z-modal);display:none;flex-direction:column"><div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--brd)"><div style="font-family:'Syne',sans-serif;font-size:17px;font-weight:800;color:var(--t1)">Qualifie les Faits</div><div style="display:flex;align-items:center;gap:10px"><span id="qualif-counter" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--t3)">1/3</span><button onclick="QUALIF.stop()" style="color:var(--t2);background:none;border:none;font-size:20px;cursor:pointer" aria-label="Fermer">✕</button></div></div><div id="qualif-body" style="flex:1;overflow-y:auto;padding:14px"></div></div>
+<div id="eb-ov" role="dialog" aria-modal="true" style="position:fixed;inset:0;background:var(--bg-0);z-index:var(--z-modal);display:none;flex-direction:column"><div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--brd)"><div id="eb-title" style="font-family:'Syne',sans-serif;font-size:15px;font-weight:800;color:var(--t1)">Examen Blanc</div><div style="display:flex;align-items:center;gap:10px"><span id="eb-timer" style="font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:700;color:var(--t1)">60:00</span><button onclick="EB.stop()" style="color:var(--t2);background:none;border:none;font-size:20px;cursor:pointer" aria-label="Fermer">✕</button></div></div><div id="eb-body" style="flex:1;overflow-y:auto;padding:14px"></div></div>
+<div id="badge-unlock-ov" role="dialog" aria-modal="true" style="position:fixed;inset:0;background:rgba(0,0,0,.85);backdrop-filter:blur(14px);z-index:var(--z-critical);display:none;align-items:center;justify-content:center;padding:24px"><div style="background:var(--bg-1);border:1px solid rgba(200,146,26,.25);border-radius:var(--r-3xl);padding:32px 24px;text-align:center;max-width:320px;width:100%"><div id="bul-emoji" style="font-size:64px;margin-bottom:10px;display:block">🏆</div><div id="bul-name" style="font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:var(--gold-l);margin-bottom:8px">Badge débloqué</div><div id="bul-desc" style="font-size:13px;color:var(--t2);margin-bottom:20px">Description</div><button class="btn-main" onclick="BADGES.closeModal()">Super !</button></div></div>
+<div id="streak-danger-ov" role="dialog" aria-modal="true" style="position:fixed;inset:0;background:rgba(255,61,87,.1);z-index:var(--z-toast);display:none;align-items:center;justify-content:center;padding:24px"><div style="background:var(--bg-1);border:1px solid rgba(255,61,87,.25);border-radius:var(--r-3xl);padding:28px;text-align:center;max-width:320px;width:100%"><div style="font-size:52px;margin-bottom:12px">🔥</div><div style="font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:var(--err);margin-bottom:8px">Ton streak est en danger !</div><div id="streak-shield-info" style="font-size:13px;color:var(--t2);margin-bottom:16px"></div><button id="use-shield-btn" class="btn-main" style="display:none;margin-bottom:8px" onclick="SHIELD.useShield()">🛡️ Utiliser un bouclier</button><button class="btn-ghost btn-full" onclick="SHIELD.dismiss()">Continuer quand même</button></div></div>
+<div id="pro-modal-ov" role="dialog" aria-modal="true" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:var(--z-toast);background:rgba(0,0,0,.8);backdrop-filter:blur(12px);padding:16px"><div style="background:var(--bg-1);border:1px solid rgba(200,146,26,.22);border-radius:var(--r-3xl);padding:24px;max-width:400px;width:100%;max-height:88dvh;overflow-y:auto"><div style="text-align:center;margin-bottom:16px"><div style="font-size:52px;margin-bottom:10px">👑</div><div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:900;color:var(--gold-l);margin-bottom:6px">OPJ Elite PRO</div><div style="font-size:13px;color:var(--t2)">Tout le contenu, sans limite</div></div><button class="btn-gold" onclick="P.buy()" style="margin-bottom:8px">S'abonner maintenant</button><button class="btn-ghost btn-full" onclick="P.hidePro()">Fermer</button></div></div>
+<div id="pay-modal-ov" role="dialog" aria-modal="true" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:calc(var(--z-toast) + 1);background:rgba(0,0,0,.85);backdrop-filter:blur(14px);padding:16px"><div style="background:var(--bg-1);border-radius:var(--r-3xl);padding:24px;max-width:400px;width:100%;max-height:88dvh;overflow-y:auto"><div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:var(--t1);margin-bottom:16px">Choisir un plan</div><div id="pay-plan-2m" class="pay-plan" onclick="P.selectPlan('2m')"><div style="font-weight:700;color:var(--t1);margin-bottom:3px">2 mois</div><div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--t3)">59€</div></div><div id="pay-plan-6m" class="pay-plan" onclick="P.selectPlan('6m')"><div style="font-weight:700;color:var(--t1);margin-bottom:3px">6 mois ⭐</div><div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--t3)">149€</div></div><div class="inp-g" style="margin-top:12px"><label class="inp-lbl">Email</label><input type="email" id="pay-email" class="inp" placeholder="votre@email.fr"></div><button class="btn-gold" onclick="P.confirmPay()" style="margin-top:8px">Valider →</button><button class="btn-ghost btn-full" style="margin-top:8px" onclick="P.hidePay()">Annuler</button></div></div>
 
 <!-- Lesson complete overlay (PRIORITÉ 2) -->
-<div id="lesson-complete-ov" class="lesson-complete-ov" aria-hidden="true">
+<div id="lesson-complete-ov" class="lesson-complete-ov" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="lc-kicker-label">
   <div class="lc-card">
-    <div class="lc-kicker">LEÇON TERMINÉE</div>
+    <div class="lc-kicker" id="lc-kicker-label">LEÇON TERMINÉE</div>
     <div class="lc-emoji" id="lc-emoji">🎉</div>
     <div class="lc-grade-line">
       <span class="lc-grade-ico" id="lc-grade-ico"></span>
@@ -970,7 +1004,7 @@ body.app-shell{display:flex;flex-direction:column;min-height:100dvh}
 </div>
 
 <!-- Level-up grade (6A) -->
-<div id="levelup-ov" class="levelup-ov" aria-hidden="true" onclick="closeLevelUp()">
+<div id="levelup-ov" class="levelup-ov" aria-hidden="true" role="dialog" aria-modal="true" onclick="closeLevelUp()">
   <div class="levelup-card">
     <div class="levelup-kicker">NOUVEAU GRADE !</div>
     <span class="levelup-icon" id="lu-icon" role="img" aria-hidden="true">👮</span>
@@ -988,7 +1022,7 @@ body.app-shell{display:flex;flex-direction:column;min-height:100dvh}
 <!-- Toast container -->
 <div id="toast-ctr" style="position:fixed;bottom:calc(70px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);z-index:var(--z-toast);display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:none"></div>
 <!-- FAB -->
-<button id="fab" style="position:fixed;right:16px;bottom:calc(70px + env(safe-area-inset-bottom) + 10px);width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent-l));border:none;cursor:pointer;z-index:var(--z-overlay);display:none;align-items:center;justify-content:center;font-size:18px;box-shadow:0 4px 20px rgba(27,107,255,.4)" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
+<button id="fab" aria-label="Retour en haut" style="position:fixed;right:16px;bottom:calc(70px + env(safe-area-inset-bottom) + 10px);width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent-l));border:none;cursor:pointer;z-index:var(--z-overlay);display:none;align-items:center;justify-content:center;font-size:18px;box-shadow:0 4px 20px rgba(27,107,255,.4)" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
 <!-- Offline bar -->
 <div id="offline-bar" style="display:none;position:fixed;top:0;left:0;right:0;z-index:var(--z-critical);background:var(--warn);color:#000;font-size:11px;font-weight:700;text-align:center;padding:6px">📴 Hors ligne</div>
 

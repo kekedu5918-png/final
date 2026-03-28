@@ -18,7 +18,7 @@
   --brd:rgba(255,255,255,.055);--brd-l:rgba(255,255,255,.10);
   --brd-acc:rgba(27,107,255,.35);--brd-gold:rgba(200,146,26,.30);
   --r-s:8px;--r-m:12px;--r-l:16px;--r-xl:20px;--r-2xl:26px;
-  --tr:.16s cubic-bezier(.4,0,.2,1);--spring:.38s cubic-bezier(.34,1.56,.64,1);
+  --tr:.16s cubic-bezier(.4,0,.2,1);--tr-spring:.38s cubic-bezier(.34,1.56,.64,1);
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;background:var(--bg-0);color:var(--t1)}
@@ -207,7 +207,7 @@ button{cursor:pointer;border:none;background:none}
   background:var(--bg-2);border:1px solid var(--brd-l);border-radius:var(--r-xl);
   padding:11px 17px;font-size:13px;font-weight:700;color:var(--t1);
   box-shadow:0 8px 32px rgba(0,0,0,.55);white-space:nowrap;backdrop-filter:blur(12px);
-  animation:toastIn .25s var(--spring) both,toastOut .3s var(--tr) 2.8s both;
+  animation:toastIn .25s var(--tr-spring) both,toastOut .3s var(--tr) 2.8s both;
   display:flex;align-items:center;gap:7px;width:100%;
 }
 .toast.ok{border-color:rgba(0,201,122,.28);color:var(--ok)}
@@ -229,8 +229,8 @@ button{cursor:pointer;border:none;background:none}
   flex-direction:column;align-items:center;justify-content:center;
   padding:32px;text-align:center;
 }
-.success-ov.on{display:flex;animation:pgIn .35s var(--spring) both}
-.success-ring{position:relative;margin-bottom:22px;animation:popIn .5s var(--spring) .05s both}
+.success-ov.on{display:flex;animation:pgIn .35s var(--tr-spring) both}
+.success-ring{position:relative;margin-bottom:22px;animation:popIn .5s var(--tr-spring) .05s both}
 .success-ring svg{transform:rotate(-90deg)}
 .success-ring-em{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:34px}
 .success-grade{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;color:var(--gold-l);letter-spacing:.14em;text-transform:uppercase;margin-bottom:6px;animation:pgIn .4s .14s var(--tr) both}
@@ -454,6 +454,16 @@ function showSuccess(name){
   },2300);
 }
 
+/* Bridge same-origin vers le parent (index.html) */
+var AUTH,S,save;
+try{
+  if(window.parent&&window.parent!==window){
+    AUTH=window.parent.AUTH;
+    S=window.parent.S;
+    save=window.parent.save;
+  }
+}catch(e){}
+
 async function doLogin(){
   const email=document.getElementById('login-email').value.trim();
   const pass=document.getElementById('login-password').value;
@@ -461,7 +471,7 @@ async function doLogin(){
   if(!pass){showErr('login-password','err-lp','Mot de passe requis');return;}
   setLoad('btn-login',true);
   try{
-    if(typeof AUTH!=='undefined'&&AUTH.login){
+    if(typeof AUTH!=='undefined'&&AUTH&&AUTH.login){
       const{data,error}=await AUTH.login(email,pass);
       setLoad('btn-login',false);
       if(error){
@@ -502,13 +512,13 @@ async function doSignup(){
         const f=m.includes('already')?'Cet email est déjà utilisé — connectez-vous':error.message;
         showToast(f,'err');return;
       }
-      if(window.S){window.S.user.name=name;window.S.user.examDate=date;if(typeof save==='function')save();}
+      if(S){S.user.name=name;S.user.examDate=date;if(save)save();}
       if(data?.session){showToast('Compte créé ! Bienvenue 🎯','ok');setTimeout(()=>showSuccess(name),420);}
       else{showToast('Compte créé ! Vérifiez votre email.','ok');setTimeout(()=>switchTab('connexion'),1600);}
     }else{
       await new Promise(r=>setTimeout(r,900));
       setLoad('btn-signup',false);
-      if(window.S){window.S.user.name=name;window.S.user.examDate=date;if(typeof save==='function')save();}
+      if(S){S.user.name=name;S.user.examDate=date;if(save)save();}
       showToast('Compte créé !','ok');
       setTimeout(()=>showSuccess(name),420);
     }
@@ -538,26 +548,8 @@ function doOffline(){
   setTimeout(()=>_showSuccessAndNotify('Officier'),500);
 }
 
-/* Notifier le parent index.html via postMessage */
 function _showSuccessAndNotify(name){
   showSuccess(name);
-  setTimeout(function(){
-    try{
-      if(window.parent&&window.parent!==window){
-        window.parent.postMessage({type:'auth',name:name},'*');
-      }
-    }catch(e){}
-  },2200);
-}
-
-/* Surcharger doLogin/doSignup pour notifier le parent */
-var _ologin=doLogin,_osignup=doSignup;
-async function doLoginWithBridge(){
-  await _ologin();
-  // notif gérée par showSuccess
-}
-async function doSignupWithBridge(){
-  await _osignup();
 }
 
 /* Surcharger showSuccess pour notifier le parent */
@@ -567,7 +559,7 @@ window.showSuccess=function(name){
   setTimeout(function(){
     try{
       if(window.parent&&window.parent!==window){
-        window.parent.postMessage({type:'auth',name:name},'*');
+        window.parent.postMessage({type:'auth',name:name},window.location.origin);
       }
     }catch(e){}
   },2200);
