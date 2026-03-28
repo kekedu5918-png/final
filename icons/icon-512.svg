@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" rx="102" fill="#070b15"/>
+  <rect x="8" y="8" width="496" height="496" rx="94" fill="none" stroke="#1b6bff" stroke-width="4"/>
+  <path d="M256 72l22 67.5h71L295 178l22 67.5L256 207 195 245.5l22-67.5-54-38.5h71z" fill="#d4af37" stroke="#b8941f" stroke-width="2.5" stroke-linejoin="round"/>
+  <text x="256" y="345" text-anchor="middle" font-family="sans-serif" font-weight="900" font-size="76" fill="#e8eeff">OPJ</text>
+  <text x="256" y="420" text-anchor="middle" font-family="sans-serif" font-weight="700" font-size="52" fill="#1b6bff">ELITE</text>
+</svg>
