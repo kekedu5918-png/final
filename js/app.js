@@ -5294,73 +5294,70 @@ function renderFSRSDueWidget(){}// legacy compat
   // Initialiser Supabase
   const supabaseReady = initSupabase();
   
+  /* ── Fonction utilitaire : afficher l'app, masquer l'onboarding ── */
+  function _showApp(){
+    const _onb=document.getElementById('onboarding');if(_onb)_onb.style.display='none';
+    const _app=document.getElementById('app');if(_app){_app.style.display='flex';_app.style.flexDirection='column';}
+    const _bn=document.getElementById('bnav');if(_bn)_bn.style.display='flex';
+  }
+  function _bootLocal(){
+    const hasProgress=(S.user.name&&S.user.name!=='OPJ')||S.user.xp>0||Object.keys(S.qcm?.cards||{}).length>0;
+    if(hasProgress&&S.page==='onboarding'){S.page='home';save();}
+    if(S.page!=='onboarding'){
+      _showApp();
+      try{updateStreak();}catch(e){}
+      navigateTo('home');
+      window.addEventListener('load',()=>{try{SHIELD.checkOnOpen();BADGES.checkAll();}catch(e){}},{ once:true });
+    }
+  }
+
   if (supabaseReady) {
-    // Vérifier s'il y a une session existante
-    const session = await AUTH.getSession();
+    let session=null;
+    try{
+      session = await AUTH.getSession();
+    }catch(e){console.warn('[OPJ] getSession failed:',e);}
     
     if (session?.user) {
       currentUser = session.user;
       console.log('[OPJ] Session trouvée:', currentUser.email);
-      
-      // Charger la progression depuis Supabase
-      await SYNC.loadProgress();
+      try{await SYNC.loadProgress();}catch(e){console.warn('[OPJ] sync failed:',e);}
       const urlParams = new URLSearchParams(window.location.search);
       if (urlParams.get('payment') === 'success') {
-        await STRIPE.checkProStatus();
+        try{await STRIPE.checkProStatus();}catch(e){}
         save();
-        showToast('🎉 Abonnement activé ! Bienvenue dans OPJ Elite PRO', 'ok');
+        showToast('Abonnement activé ! Bienvenue dans OPJ Elite PRO', 'ok');
         window.history.replaceState({}, '', window.location.pathname);
       }
       S.page = 'home';
-      
-      // Afficher l'app directement
-      document.getElementById('onboarding').style.display='none';
-      const _a=document.getElementById('app'); if(_a){_a.style.display='flex';_a.style.flexDirection='column';} const _b=document.getElementById('bnav'); if(_b)_b.style.display='flex';
-      
-      // Mettre à jour l'UI
+      _showApp();
       const btnLogout = document.getElementById('btn-logout');
       if (btnLogout) btnLogout.style.display = 'flex';
       const syncStatus = document.getElementById('sync-status');
-      if (syncStatus) syncStatus.textContent = 'Cloud ☁️';
-      
-      updateStreak();
+      if (syncStatus) syncStatus.textContent = 'Cloud';
+      try{updateStreak();}catch(e){}
       navigateTo('home');
-      window.addEventListener('load',()=>{SHIELD.checkOnOpen();BADGES.checkAll();},{ once:true });
+      window.addEventListener('load',()=>{try{SHIELD.checkOnOpen();BADGES.checkAll();}catch(e){}},{ once:true });
     } else {
-      const hasProgress=S.user.name&&S.user.name!=='OPJ'||S.user.xp>0||Object.keys(S.qcm?.cards||{}).length>0;
-      if(hasProgress&&S.page==='onboarding')S.page='home';
-      if(S.page !== 'onboarding' && S.user.name) {
-        const _onb2=document.getElementById('onboarding');if(_onb2)_onb2.style.display='none';
-        const _a=document.getElementById('app'); if(_a){_a.style.display='flex';_a.style.flexDirection='column';} const _b=document.getElementById('bnav'); if(_b)_b.style.display='flex';
-        updateStreak();navigateTo('home');
-        window.addEventListener('load',()=>{SHIELD.checkOnOpen();BADGES.checkAll();},{ once:true });
-      }
+      _bootLocal();
     }
     
-    // Écouter les changements d'auth (magic link, etc.)
-    AUTH.onAuthChange(async (event, session) => {
-      console.log('[OPJ] Auth event:', event);
-      if (event === 'SIGNED_IN' && session?.user) {
-        currentUser = session.user;
-        await SYNC.loadProgress();
-        S.page = 'home';
-        save();
-        finishAuth(S.user.name || 'Officier');
-      } else if (event === 'SIGNED_OUT') {
-        currentUser = null;
-        showAuthScreen();
-      }
-    });
+    try{
+      AUTH.onAuthChange(async (event, session) => {
+        console.log('[OPJ] Auth event:', event);
+        if (event === 'SIGNED_IN' && session?.user) {
+          currentUser = session.user;
+          try{await SYNC.loadProgress();}catch(e){}
+          S.page = 'home';
+          save();
+          finishAuth(S.user.name || 'Officier');
+        } else if (event === 'SIGNED_OUT') {
+          currentUser = null;
+          showAuthScreen();
+        }
+      });
+    }catch(e){console.warn('[OPJ] onAuthChange setup failed:',e);}
   } else {
-    // Supabase non disponible, mode local uniquement
-    const hasProgress=S.user.name&&S.user.name!=='OPJ'||S.user.xp>0||Object.keys(S.qcm?.cards||{}).length>0;
-    if(hasProgress&&S.page==='onboarding')S.page='home';
-    if(S.page!=='onboarding'&&S.user.name){
-      const _onb=document.getElementById('onboarding');if(_onb)_onb.style.display='none';
-      const _a=document.getElementById('app'); if(_a){_a.style.display='flex';_a.style.flexDirection='column';} const _b=document.getElementById('bnav'); if(_b)_b.style.display='flex';
-      updateStreak();navigateTo('home');
-      window.addEventListener('load',()=>{SHIELD.checkOnOpen();BADGES.checkAll();},{ once:true });
-    }
+    _bootLocal();
   }
   
   // Raccourci clavier / pour recherche
