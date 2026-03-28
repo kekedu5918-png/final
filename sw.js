@@ -9,6 +9,7 @@ const CACHE = 'opj-v60';
 const STATIC = [
   './',
   './index.html',
+  './onboarding.html',
   './manifest.json',
 
   /* CSS */
@@ -32,8 +33,8 @@ const STATIC = [
   './js/data/printsheets.js',
 
   /* Icons PWA */
-  './icons/icon-192.png',
-  './icons/icon-512.png'
+  './icons/icon-192.svg',
+  './icons/icon-512.svg'
 ];
 
 /* ── Install : mise en cache des assets statiques ── */
@@ -102,7 +103,7 @@ self.addEventListener('fetch', e => {
 
 /* ── Icônes / URL d’ouverture relatives au scope (GitHub Pages / sous-dossier) ── */
 function swIcon192() {
-  return new URL('icons/icon-192.png', self.registration.scope).href;
+  return new URL('icons/icon-192.svg', self.registration.scope).href;
 }
 
 /* ── Push (serveur ou tests) : affiche une notif locale via le SW ── */

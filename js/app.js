@@ -834,8 +834,7 @@ function navigateTo(page){
     finish();
   }
 }
-function goLesson(){navigateTo('lecons');}
-function goRevision(){navigateTo('revision');}
+/* goLesson/goRevision supprimés — inutilisés */
 
 /** Prochaine leçon non vue (parcours CHAPTERS dans l'ordre). */
 function getNextUnseenLessonId(){
@@ -927,6 +926,7 @@ function renderHome(){
     sw.classList.toggle('on',!!show);
   }
   renderWeakWidget();
+  renderChapterProgress();
   try{renderQDJ();}catch(e){}
   try{if(typeof showNotifPermissionBanner==='function')showNotifPermissionBanner();}catch(_){}
   const placementEl=document.getElementById('placement-card');
@@ -1353,10 +1353,7 @@ function oralRenderOv(){
 </div>
 </div>`;
 }
-function escapeHtml(s){
-  if(s==null)return'';
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
+function escapeHtml(s){return eh(s);}
 function updateDueCount(){
   const due=QB.filter(q=>FSRS.isDue(S.qcm.cards[q.id])).length;
   const el=document.getElementById('rev-due-count');
@@ -1409,6 +1406,12 @@ function renderRevThemes(){
     {cat:'REQS',name:'Réquisitions',em:'📨',color:'#0891b2'},
     {cat:'EUROP',name:'Coopération UE',em:'🌍',color:'#2563eb'},
     {cat:'PROBATION',name:'Probation & Peines',em:'⚖️',color:'#9333ea'},
+    {cat:'CYBER',name:'Cybercriminalité',em:'💻',color:'#06b6d4'},
+    {cat:'VIOLENCES_CONJ',name:'Violences Conjugales',em:'🛡️',color:'#e11d48'},
+    {cat:'STUPS',name:'Stupéfiants',em:'💊',color:'#84cc16'},
+    {cat:'ATTEINTES_LIBERTE',name:'Atteintes Libertés',em:'⚠️',color:'#f97316'},
+    {cat:'INFRACTIONS_PUB',name:'Infractions Publiques',em:'📢',color:'#8b5cf6'},
+    {cat:'CRIMORG',name:'Criminalité Organisée',em:'🕵️',color:'#7c3aed'},
   ];
   const el=document.getElementById('theme-list');if(!el)return;
 
@@ -2256,6 +2259,7 @@ function resetData(){
   const name=S.user.name;S=defaultState();S.user.name=name;S.page='home';save();
   navigateTo('home');showToast('Progression réinitialisée','ok');
 }
+function doLogout(){try{AUTH.logout();}catch(e){showToast('Erreur déconnexion','err');}}
 
 /* ─── CARTOUCHES ─── */
 
@@ -2318,84 +2322,14 @@ pieges:["Résistance PASSIVE ≠ rébellion. Ici il frappe → rébellion + viol
 corrige:"Monsieur le Procureur, OPJ [NOM].\n\nOutrage + Rébellion + Violences sur PDAP — art. 433-5, 433-6, 222-13.\n\nDEMANDES : GAV. Certificat médical collègue blessé."}
 ];
 
-const PLAN12=[
-{s:1,t:"GAV — Droit commun",d:"Art. 63-73 CPP"},
-{s:2,t:"GAV — Régimes dérogatoires",d:"CO (706-88) / Terrorisme"},
-{s:3,t:"Enquête de flagrance",d:"Art. 53-67 CPP"},
-{s:4,t:"Enquête préliminaire",d:"Art. 75-78-5 CPP"},
-{s:5,t:"Perquisitions & Mandats",d:"Art. 56-67 CPP + mandats"},
-{s:6,t:"Commission rogatoire",d:"Art. 151-155 CPP"},
-{s:7,t:"Droit pénal général",d:"Tentative, complicité, aggravantes"},
-{s:8,t:"Infractions contre les personnes",d:"Homicide, viol, violences"},
-{s:9,t:"Infractions contre les biens",d:"Vol, escroquerie, recel, stups"},
-{s:10,t:"Procédures spéciales",d:"CO, mineurs, terrorisme"},
-{s:11,t:"CR Téléphonique",d:"Structure, dossiers pratiques"},
-{s:12,t:"QCM intensifs",d:"Tests chrono de connaissances"}];
+/* PLAN12 supprimé — inutilisé */
 
 /* ANNALES, LIBERTES_DATA → js/data/annales.js | PB, LECONS → js/data/procedures.js */
 /* SUPPRIMÉ ICI — ces constantes sont chargées via <script> avant app.js */
 
+/* LEC legacy supprimé — remplacé par CHAPTERS + renderLecons() */
+const LEC={render(){},open(){},markDone(){},close(){}};
 
-const LEC={
-  render(){
-    const el=document.getElementById('lecons-list')||document.getElementById('chapters-list'); if(!el)return;
-    let done={};try{const r=localStorage.getItem('opj_lec');if(r)done=JSON.parse(r);}catch(e){}
-    const dc=Object.keys(done).length;
-    el.innerHTML=`<div class="sec-hd"><h4>Toutes les leçons</h4><span class="cnt">${dc}/${LECONS.length} vues</span></div>`
-    +`<div class="lec-list-v18">`
-    +LECONS.map(l=>`<div class="lec-item${done[l.id]?' done':''} au" onclick="LEC.open('${l.id}')">
-      <div class="lec-item-em">${l.em||'📚'}</div>
-      <div class="lec-item-inf">
-        <div class="lec-item-nm">${l.nm}</div>
-        <div class="lec-item-mt">${l.mt||''}</div>
-        ${done[l.id]?'<div class="lec-item-ok">✓ Leçon vue</div>':''}
-      </div>
-      <div class="lec-item-arr">›</div>
-    </div>`).join('')+'</div>';
-  },
-  open(id){
-    // FIX #2b v21 — mutex : fermer LP si ouvert
-    if(typeof LP!=='undefined'&&document.getElementById('lec-ov')?.classList.contains('on')) LP.close();
-    const l=LECONS.find(x=>x.id===id); if(!l)return;
-    let done={};try{const r=localStorage.getItem('opj_lec');if(r)done=JSON.parse(r);}catch(e){}
-    let h=`<span class="bs-pill"></span>
-    <div class="bs-hd" style="padding:0;position:relative">
-      <button class="bs-close" onclick="LEC.close()" style="position:absolute;top:13px;right:13px">✕</button>
-      <div class="lm-hero">
-        <span class="lm-em">${l.em||'📚'}</span>
-        <div class="lm-nm">${l.nm}</div>
-        <div class="lm-mt">${l.mt||''}</div>
-        ${(l.chips||[]).length?`<div class="lm-chips">${l.chips.map(c=>`<span class="lm-chip">${c}</span>`).join('')}</div>`:''}
-      </div>
-    </div>
-    <div class="bs-bd">`;
-    if(l.intro)h+=`<div class="lm-intro">${l.intro}</div>`;
-    const secs=l.secs||l.sections||[];
-    secs.forEach(s=>{
-      h+=`<div class="lm-sec-t">📌 ${s.t}</div>`;
-      (s.items||[]).forEach(it=>h+=`<div class="lm-item">${it}</div>`);
-    });
-    if(l.keys&&l.keys.length){
-      h+=`<div class="lm-keys"><div class="lm-keys-t">⚡ Points clés à retenir</div><div class="lm-keys-c">${l.keys.map(k=>`• ${k}`).join('<br>')}</div></div>`;
-    }
-    h+=`<div style="padding:14px">
-      <button onclick="LEC.markDone('${id}')" style="width:100%;padding:12px;border-radius:13px;border:none;background:linear-gradient(135deg,#D4AF37,#e8c84a 50%,#b8941f);color:#000;font-family:Inter,sans-serif;font-size:13px;font-weight:800;cursor:pointer">
-        ${done[id]?'✓ Relire encore':'Marquer comme vue +10 XP'}
-      </button>
-    </div></div>`;
-    const ov=document.getElementById('lec-ov'),bd=document.getElementById('lec-bd');
-    if(ov&&bd){bd.innerHTML=h;ov.classList.add('on');document.body.style.overflow='hidden';}
-  },
-  markDone(id){
-    let done={};try{const r=localStorage.getItem('opj_lec');if(r)done=JSON.parse(r);}catch(e){}
-    if(!done[id]){done[id]=1;localStorage.setItem('opj_lec',JSON.stringify(done));addXP(10);showToast('+10 XP — Leçon vue !','ok');}
-    LEC.close();setTimeout(()=>LEC.render(),100);
-  },
-  close(){
-    const ov=document.getElementById('lec-ov'); if(ov)ov.classList.remove('on');
-    document.body.style.overflow='';
-  }
-};
 /* ═══════════════════════════════════════════════════
    LIBERTÉS PUBLIQUES — OPJ ELITE v22.0
    ═══════════════════════════════════════════════════ */
@@ -2621,6 +2555,37 @@ const EVAL={answers:{},show(){this.answers={};document.getElementById('eval-resu
 /* DOMContentLoaded vestige supprimé v30 */
 
 /* ═══ C — CARTOUCHES ═══ */
+const CT={
+  gav:{
+    ti:'PV de Garde à Vue',
+    st:'Mentions obligatoires — Art. 64 CPP',
+    fs:[
+      {id:'ct-gav-identite',l:'Identité complète du gardé à vue',t:'text',h:'Nom, prénom, date/lieu de naissance, domicile',r:true},
+      {id:'ct-gav-infraction',l:'Nature et date de l\'infraction',t:'text',h:'Qualification pénale + article',r:true},
+      {id:'ct-gav-notif',l:'Notification des droits (art. 63-1 CPP)',t:'ta',h:'Droit de prévenir un proche, droit à un avocat, droit à un examen médical, droit de consulter le PV de notification et le certificat médical...',r:true},
+      {id:'ct-gav-heuredeb',l:'Heure de début de la GAV',t:'dt',r:true},
+      {id:'ct-gav-avispr',l:'Avis au Procureur de la République',t:'text',h:'Heure de l\'avis, nom du magistrat',r:true},
+      {id:'ct-gav-avocat',l:'Avocat désigné / commis d\'office',t:'text',h:'Nom de l\'avocat, heure d\'arrivée',r:false},
+      {id:'ct-gav-medecin',l:'Examen médical',t:'text',h:'Heure, nom du médecin, conclusions',r:false},
+      {id:'ct-gav-auditions',l:'Auditions réalisées',t:'ta',h:'Résumé des auditions, heures de début/fin, repos',r:true},
+      {id:'ct-gav-fin',l:'Heure de fin de GAV / suite donnée',t:'text',h:'Levée, prolongation, déferrement',r:true},
+    ]
+  },
+  perq:{
+    ti:'PV de Perquisition',
+    st:'Mentions obligatoires — Art. 57 CPP',
+    fs:[
+      {id:'ct-perq-cadre',l:'Cadre juridique',t:'text',h:'Flagrance art. 56 / CR art. 151 / Préliminaire art. 76',r:true},
+      {id:'ct-perq-lieu',l:'Adresse exacte de la perquisition',t:'text',h:'N°, rue, ville',r:true},
+      {id:'ct-perq-heures',l:'Heures de début et de fin',t:'text',h:'Début : ... / Fin : ... (entre 6h et 21h sauf exceptions)',r:true},
+      {id:'ct-perq-occupant',l:'Présence de l\'occupant des lieux',t:'text',h:'Nom de la personne présente ou représentants désignés (art. 57 al. 2 CPP)',r:true},
+      {id:'ct-perq-objets',l:'Objets et documents saisis',t:'ta',h:'Description détaillée, mise sous scellés',r:true},
+      {id:'ct-perq-inventaire',l:'Inventaire contradictoire',t:'ta',h:'Inventaire des objets saisis en présence de l\'occupant',r:true},
+      {id:'ct-perq-consentement',l:'Consentement écrit (préliminaire)',t:'text',h:'Accord exprès manuscrit si enquête préliminaire (art. 76 CPP)',r:false},
+      {id:'ct-perq-signature',l:'Signatures',t:'text',h:'OPJ + occupant des lieux (ou mention de refus)',r:true},
+    ]
+  }
+};
 const C={cur:null,
   start(t){C.cur=t;const tpl=CT[t];document.getElementById('cm').style.display='none';document.getElementById('ct').style.display='none';document.getElementById('ca').style.display='block';document.getElementById('ca-bg').textContent=t.toUpperCase();document.getElementById('ca-ti').textContent=tpl.ti;document.getElementById('ca-st').textContent=tpl.st;document.getElementById('ca-r').style.display='none';window.scrollTo({top:0,behavior:'instant'});document.getElementById('ca-f').innerHTML=tpl.fs.map(f=>`<div class="mb12"><div class="ct-l">${f.l}${f.r?' <span style="color:var(--err)">*</span>':''}</div>${f.t==='ta'?`<textarea class="ct-i" id="${f.id}" rows="3" placeholder="${f.h||''}"></textarea>`:f.t==='dt'?`<input type="datetime-local" class="ct-i" id="${f.id}">`:`<input type="text" class="ct-i" id="${f.id}" placeholder="${f.h||''}">`}</div>`).join('')},
   validate(){const tpl=CT[C.cur];let ok=true,f=0,t=0;tpl.fs.forEach(x=>{const el=document.getElementById(x.id);if(x.r){t++;if(!el.value.trim()){el.classList.add('err');el.classList.remove('val');ok=false}else{el.classList.remove('err');el.classList.add('val');f++}}});const r=document.getElementById('ca-r');r.style.display='block';r.scrollIntoView({behavior:'smooth'});if(ok){S.cv++;addXP(25);save();r.innerHTML=`<div class="cd" style="border-color:var(--ok)"><div class="ex-h ex-ok">✓ Cartouche validée — ${f}/${t} champs</div><div class="ex-t">+25 XP</div></div>`}else r.innerHTML=`<div class="cd" style="border-color:var(--err)"><div class="ex-h ex-ko">✗ Incomplète — ${f}/${t} champs</div></div>`},
@@ -4875,28 +4840,7 @@ function showToast(msg,type=''){
   el.setAttribute('aria-live', type === 'err' ? 'assertive' : 'polite');
   ctr.appendChild(el);setTimeout(()=>el.remove(),3000);
 }
-function confetti(burst){
-  const cv=document.getElementById('confetti-cv');if(!cv)return;
-  const ctx=cv.getContext('2d');cv.width=window.innerWidth;cv.height=window.innerHeight;
-  const colors=['#2563eb','#3b82f6','#d4af37','#10b981','#ef4444','#fff'];
-  const parts=Array.from({length:burst?80:45},()=>({
-    x:Math.random()*cv.width,y:burst?Math.random()*cv.height*.4:-10,
-    r:3+Math.random()*4,c:colors[Math.floor(Math.random()*colors.length)],
-    vx:(Math.random()-.5)*4,vy:2+Math.random()*3.5,
-    a:Math.random()*360,va:(Math.random()-.5)*7,l:1
-  }));
-  let fr;
-  const draw=()=>{
-    ctx.clearRect(0,0,cv.width,cv.height);let alive=false;
-    for(const p of parts){
-      p.x+=p.vx;p.y+=p.vy;p.a+=p.va;p.l-=.01;if(p.l<=0)continue;alive=true;
-      ctx.save();ctx.globalAlpha=p.l;ctx.fillStyle=p.c;
-      ctx.translate(p.x,p.y);ctx.rotate(p.a*Math.PI/180);ctx.fillRect(-p.r,-p.r/2,p.r*2,p.r);ctx.restore();
-    }
-    if(alive)fr=requestAnimationFrame(draw);else ctx.clearRect(0,0,cv.width,cv.height);
-  };
-  fr=requestAnimationFrame(draw);setTimeout(()=>{cancelAnimationFrame(fr);ctx.clearRect(0,0,cv.width,cv.height);},4000);
-}
+/* confetti() — version unique définie plus bas (l.~5324) */
 function initOffline(){const b=document.getElementById('offline-bar');if(!b)return;const u=()=>b.style.display=!navigator.onLine?'block':'none';u();window.addEventListener('online',u);window.addEventListener('offline',u);}
 function initFAB(){const fab=document.getElementById('fab');if(!fab)return;fab.onclick=()=>window.scrollTo({top:0,behavior:(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches)?'auto':'smooth'});window.addEventListener('scroll',()=>fab.classList.toggle('vis',window.scrollY>250),{passive:true});}
 // manifest is static (manifest.json)
@@ -5126,7 +5070,7 @@ function finishOnboarding(){
   startOfflineMode();
 }
 
-function renderFSRSDueWidget(){}// legacy compat
+/* renderFSRSDueWidget supprimé — legacy compat */
 
 /* ─── BOOT ─── */
 (async function boot(){
@@ -5260,24 +5204,7 @@ function renderMotivBanner(){
   el.innerHTML=`<span style="font-size:15px">${m.icon}</span><span style="font-size:12px;color:var(--t2);line-height:1.5">${m.msg}</span>`;
 }
 
-// Animation des KPI numbers (count-up)
-function animCountUp(elId, target, duration=600){
-  const el=document.getElementById(elId);
-  if(!el||target===0)return;
-  const start=parseInt(el.textContent)||0;
-  const diff=target-start;
-  if(diff===0)return;
-  const startTime=performance.now();
-  const step=now=>{
-    const elapsed=now-startTime;
-    const progress=Math.min(elapsed/duration,1);
-    const ease=1-Math.pow(1-progress,3);
-    el.textContent=Math.round(start+diff*ease);
-    if(progress<1)requestAnimationFrame(step);
-    else el.textContent=target;
-  };
-  requestAnimationFrame(step);
-}
+/* animCountUp supprimé — jamais appelé */
 
 /* haptic() défini plus haut (l.4976) — suppression du doublon */
 
@@ -5628,7 +5555,6 @@ function confetti(intense=true){
     combo=0;showComboHUD();
     if(_finishSession)_finishSession();
     setTimeout(()=>{
-      if(document.getElementById('qr-score-big'))return;
       const el=document.getElementById('qcm-results');
       if(!el||el.style.display==='none')return;
       const s=window.S?.qcm?.stats||{ok:0,ko:0,xp:0};
