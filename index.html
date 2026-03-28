@@ -514,7 +514,7 @@ body.app-shell{display:flex;flex-direction:column;min-height:100dvh}
   background:var(--bg-overlay);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
   padding:24px;cursor:pointer;
 }
-.levelup-ov[aria-hidden="false"]{display:flex!important}
+.levelup-ov:not([inert]){display:flex!important}
 .levelup-card{
   pointer-events:auto;cursor:default;
   max-width:360px;width:100%;text-align:center;
@@ -781,31 +781,6 @@ body.app-shell{display:flex;flex-direction:column;min-height:100dvh}
   </div>
 </div>
 <div id="theme-list"></div>
-<div id="qcm-session" style="display:none">
-  <div id="qcm-hdr" style="display:flex;align-items:center;
-    justify-content:space-between;margin-bottom:16px">
-    <div id="qcm-cat-lbl" style="font-family:'JetBrains Mono',
-      monospace;font-size:11px;color:var(--t3)"></div>
-    <div id="qcm-prog-txt" style="font-family:'JetBrains Mono',
-      monospace;font-size:12px;font-weight:700;color:var(--t2)"></div>
-    <div id="qcm-timer" style="font-family:'JetBrains Mono',
-      monospace;font-size:13px;font-weight:700;color:var(--t1);display:none"></div>
-  </div>
-  <div id="qcm-progress-bar" style="height:3px;background:var(--bg-3);
-    border-radius:100px;overflow:hidden;margin-bottom:20px">
-    <div id="qcm-progress-fill" style="height:100%;background:
-      linear-gradient(90deg,var(--accent),var(--accent-l));
-      border-radius:100px;transition:width .3s ease;width:0%"></div>
-  </div>
-  <div id="qcm-body"></div>
-  <div id="qcm-next-wrap" style="margin-top:14px;display:none">
-    <button id="qcm-next-btn" class="btn-main"
-      onclick="nextQuestion()">Question suivante →</button>
-  </div>
-</div>
-<div id="qcm-results-inner" style="display:none">
-  <div id="qcm-results-body"></div>
-</div>
 </div>
 <div id="rtab-fiches-content" style="display:none">
   <div class="slbl">Fiches LAME</div>
@@ -850,6 +825,29 @@ body.app-shell{display:flex;flex-direction:column;min-height:100dvh}
   <div class="slbl" style="margin-top:18px">Imprimer</div>
   <div id="print-list"></div>
 </div>
+</div><!-- /rev-menu -->
+<div id="qcm-session" style="display:none">
+  <div id="qcm-hdr" style="display:flex;align-items:center;
+    justify-content:space-between;margin-bottom:16px">
+    <div id="qcm-cat-lbl" style="font-family:'JetBrains Mono',
+      monospace;font-size:11px;color:var(--t3)"></div>
+    <div id="qcm-prog-txt" style="font-family:'JetBrains Mono',
+      monospace;font-size:12px;font-weight:700;color:var(--t2)"></div>
+    <div id="qcm-timer" style="font-family:'JetBrains Mono',
+      monospace;font-size:13px;font-weight:700;color:var(--t1);display:none"></div>
+  </div>
+  <div id="qcm-progress-bar" style="height:3px;background:var(--bg-3);
+    border-radius:100px;overflow:hidden;margin-bottom:20px">
+    <div id="qcm-progress-fill" style="height:100%;background:
+      linear-gradient(90deg,var(--accent),var(--accent-l));
+      border-radius:100px;transition:width .3s ease;width:0%"></div>
+  </div>
+  <div id="qcm-body"></div>
+  <div id="qcm-next-wrap" style="margin-top:14px;display:none">
+    <button id="qcm-next-btn" class="btn-main"
+      onclick="nextQuestion()">Question suivante →</button>
+  </div>
+</div>
 <div id="qcm-session-ov" style="display:none"></div>
 <div id="qcm-results" style="display:none">
   <div style="padding:24px 0;text-align:center">
@@ -865,7 +863,6 @@ body.app-shell{display:flex;flex-direction:column;min-height:100dvh}
     </div>
   </div>
 </div>
-</div><!-- /rev-menu -->
 </div>
 </div>
 
@@ -999,7 +996,7 @@ body.app-shell{display:flex;flex-direction:column;min-height:100dvh}
   <div class="pmenu-item" role="button" tabindex="0" onclick="THEME28&&THEME28.toggle()"><div class="pmenu-ico">&#x1F319;</div><div class="pmenu-lbl" id="theme-label">Mode clair</div><div class="pmenu-arr">></div></div>
   <div class="pmenu-item" role="button" tabindex="0" onclick="showAccountModal()"><div class="pmenu-ico">&#x1F464;</div><div class="pmenu-lbl">Mon compte</div><div class="pmenu-arr">></div></div>
   <div class="pmenu-item" id="btn-logout" style="display:none" role="button" tabindex="0" onclick="doLogout&&doLogout()"><div class="pmenu-ico">🚪</div><div class="pmenu-lbl" style="color:var(--err)">Déconnexion</div><div class="pmenu-arr">></div></div>
-  <div class="pmenu-item"><div class="pmenu-ico" style="font-size:11px">v59</div><div class="pmenu-lbl" style="color:var(--t2);font-size:12px">OPJ Elite · <span id="sync-status">Local</span></div></div>
+  <div class="pmenu-item"><div class="pmenu-ico" style="font-size:11px">v60</div><div class="pmenu-lbl" style="color:var(--t2);font-size:12px">OPJ Elite · <span id="sync-status">Local</span></div></div>
 </div>
 </div>
 </div>
@@ -1045,7 +1042,7 @@ body.app-shell{display:flex;flex-direction:column;min-height:100dvh}
 <div id="pay-modal-ov" role="dialog" aria-modal="true" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:calc(var(--z-toast) + 1);background:rgba(0,0,0,.85);backdrop-filter:blur(14px);padding:16px"><div style="background:var(--bg-1);border-radius:var(--r-3xl);padding:24px;max-width:400px;width:100%;max-height:88dvh;overflow-y:auto"><div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:var(--t1);margin-bottom:16px">Choisir un plan</div><div id="pay-plan-2m" class="pay-plan" onclick="P.selectPlan('2m')"><div style="font-weight:700;color:var(--t1);margin-bottom:3px">2 mois</div><div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--t3)">59€</div></div><div id="pay-plan-6m" class="pay-plan" onclick="P.selectPlan('6m')"><div style="font-weight:700;color:var(--t1);margin-bottom:3px">6 mois ⭐</div><div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--t3)">149€</div></div><div class="inp-g" style="margin-top:12px"><label for="pay-email" class="inp-lbl">Email</label><input type="email" id="pay-email" class="inp" placeholder="votre@email.fr"></div><button class="btn-gold" onclick="P.confirmPay()" style="margin-top:8px">Valider →</button><button class="btn-ghost btn-full" style="margin-top:8px" onclick="P.hidePay()">Annuler</button></div></div>
 
 <!-- Lesson complete overlay (PRIORITÉ 2) -->
-<div id="lesson-complete-ov" class="lesson-complete-ov" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="lc-kicker-label">
+<div id="lesson-complete-ov" class="lesson-complete-ov" inert role="dialog" aria-modal="true" aria-labelledby="lc-kicker-label">
   <div class="lc-card">
     <div class="lc-kicker" id="lc-kicker-label">LEÇON TERMINÉE</div>
     <div class="lc-emoji" id="lc-emoji">🎉</div>
@@ -1059,7 +1056,7 @@ body.app-shell{display:flex;flex-direction:column;min-height:100dvh}
 </div>
 
 <!-- Level-up grade (6A) -->
-<div id="levelup-ov" class="levelup-ov" aria-hidden="true" role="dialog" aria-modal="true" onclick="closeLevelUp()">
+<div id="levelup-ov" class="levelup-ov" inert role="dialog" aria-modal="true" onclick="closeLevelUp()">
   <div class="levelup-card">
     <div class="levelup-kicker">NOUVEAU GRADE !</div>
     <span class="levelup-icon" id="lu-icon" role="img" aria-hidden="true">👮</span>

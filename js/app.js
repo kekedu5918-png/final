@@ -1,13 +1,13 @@
 
 'use strict';
 /* ═══════════════════════════════════════════════════════
-   OPJ ELITE v58.0 — Script unique, architecture propre
+   OPJ ELITE v60.0 — Script unique, architecture propre
    Ordre chargement HTML : fsrs, audio, supabase, chapters.js, questions.js,
          flashcards.js, puis ce fichier (GRADES → STATE → FSRS → NAV → …)
    ═══════════════════════════════════════════════════════ */
 
 /* ─── VERSION ─── */
-const APP_VERSION='v59.0', STORAGE_KEY='opje_v59', STATE_VERSION=59;
+const APP_VERSION='v60.0', STORAGE_KEY='opje_v60', STATE_VERSION=60;
 
 /* ═══════════════════════════════════════════════════════════════════════════
    SUPABASE CONFIGURATION — Auth + Sync + Stripe Ready
@@ -465,7 +465,7 @@ function loadState(){
     }
   }catch(e){console.warn('[OPJ] loadState error:',e);}
   if(!loaded){
-    const old=localStorage.getItem('opje_v58')||localStorage.getItem('opje_v57')||localStorage.getItem('opje_v51')||localStorage.getItem('opje_v30')||localStorage.getItem('opj_v30')||localStorage.getItem('opje_v29')||localStorage.getItem('opj_v29');
+    const old=localStorage.getItem('opje_v59')||localStorage.getItem('opje_v58')||localStorage.getItem('opje_v57')||localStorage.getItem('opje_v51')||localStorage.getItem('opje_v30')||localStorage.getItem('opj_v30')||localStorage.getItem('opje_v29')||localStorage.getItem('opj_v29');
     if(old){
       try{
         const d=JSON.parse(old);
@@ -539,7 +539,7 @@ function showLevelUpOverlay(newGrade){
     fill.style.width='0%';
   }
   ov.style.display='flex';
-  ov.setAttribute('aria-hidden','false');
+  ov.removeAttribute('inert');
   document.body.style.overflow='hidden';
   haptic(200);
   if(typeof confetti==='function')confetti(true);
@@ -558,7 +558,7 @@ function showLevelUpOverlay(newGrade){
 }
 function closeLevelUp(){
   const ov=document.getElementById('levelup-ov');
-  if(ov){ov.style.display='none';ov.setAttribute('aria-hidden','true');}
+  if(ov){ov.style.display='none';ov.setAttribute('inert','');}
   document.body.style.overflow='';
   clearTimeout(_levelUpTimer);
   _levelUpTimer=null;
@@ -1113,12 +1113,12 @@ function showLessonCompleteOverlay(lessonId,xpGained){
   }
   if(nmEl)nmEl.textContent=grade.name;
   if(xpEl)xpEl.textContent='+'+xpGained+' XP';
-  ov.setAttribute('aria-hidden','false');
+  ov.removeAttribute('inert');
   confetti(true);
 }
 function closeLessonComplete(){
   const ov=document.getElementById('lesson-complete-ov');
-  if(ov)ov.setAttribute('aria-hidden','true');
+  if(ov)ov.setAttribute('inert','');
   continueProgress();
 }
 
@@ -1171,7 +1171,7 @@ function ensureOralOv(){
     ov=document.createElement('div');
     ov.id='oral-ov';
     ov.className='oral-ov';
-    ov.setAttribute('aria-hidden','true');
+    ov.setAttribute('inert','');
     document.body.appendChild(ov);
   }
   return ov;
@@ -1179,14 +1179,14 @@ function ensureOralOv(){
 function oralOpenOv(){
   const ov=ensureOralOv();
   ov.classList.add('show');
-  ov.setAttribute('aria-hidden','false');
+  ov.removeAttribute('inert');
   document.body.style.overflow='hidden';
 }
 function oralCloseOv(){
   const ov=document.getElementById('oral-ov');
   if(ov){
     ov.classList.remove('show');
-    ov.setAttribute('aria-hidden','true');
+    ov.setAttribute('inert','');
     ov.innerHTML='';
   }
   document.body.style.overflow='';
