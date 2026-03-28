@@ -448,9 +448,12 @@ function showSuccess(name){
   },80);
   setTimeout(()=>{
     document.getElementById('success-ov').classList.remove('on');
-    if(typeof finishAuth==='function')finishAuth(name);
-    else if(typeof window._opjFinish==='function')window._opjFinish(name);
-    else window.location.href='./index.html';
+    try{
+      if(window.parent&&window.parent!==window){
+        if(S){S.user.name=name||'Officier';S.page='home';if(save)save();}
+        window.parent.postMessage({type:'auth',name:name||'Officier'},window.location.origin);
+      }
+    }catch(e){}
   },2300);
 }
 
@@ -552,18 +555,6 @@ function _showSuccessAndNotify(name){
   showSuccess(name);
 }
 
-/* Surcharger showSuccess pour notifier le parent */
-var _origShowSuccess=showSuccess;
-window.showSuccess=function(name){
-  _origShowSuccess(name);
-  setTimeout(function(){
-    try{
-      if(window.parent&&window.parent!==window){
-        window.parent.postMessage({type:'auth',name:name},window.location.origin);
-      }
-    }catch(e){}
-  },2200);
-};
 
 /* Exposition */
 window.handleLogin=doLogin;

@@ -4,7 +4,7 @@
    Toutes les URLs sont résolues via self.registration.scope.
    ═══════════════════════════════════════════════════════ */
 
-const CACHE = 'opj-v57';
+const CACHE = 'opj-v58';
 
 const STATIC = [
   './',

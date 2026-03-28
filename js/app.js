@@ -1,13 +1,13 @@
 
 'use strict';
 /* ═══════════════════════════════════════════════════════
-   OPJ ELITE v57.0 — Script unique, architecture propre
+   OPJ ELITE v58.0 — Script unique, architecture propre
    Ordre chargement HTML : fsrs, audio, supabase, chapters.js, questions.js,
          flashcards.js, puis ce fichier (GRADES → STATE → FSRS → NAV → …)
    ═══════════════════════════════════════════════════════ */
 
 /* ─── VERSION ─── */
-const APP_VERSION='v57.0', STORAGE_KEY='opje_v57', STATE_VERSION=57;
+const APP_VERSION='v58.0', STORAGE_KEY='opje_v58', STATE_VERSION=58;
 
 /* ═══════════════════════════════════════════════════════════════════════════
    SUPABASE CONFIGURATION — Auth + Sync + Stripe Ready
@@ -458,7 +458,7 @@ function loadState(){
       S.page='home';save();loaded=true;return;
     }
     S={...defaultState(),...s,page:'home'};
-    // Assurer chaque clé v57
+    // Assurer chaque clé v58
     if(!S.badges)S.badges={};if(!S.badgeUiSeen)S.badgeUiSeen={};
     if(!S._badgeUiBackfill){S._badgeUiBackfill=true;Object.keys(S.badges||{}).forEach(id=>{S.badgeUiSeen[id]=1;});try{save();}catch(e){}}
     if(!S.shield)S.shield={count:1,lastEarned:null};
@@ -473,7 +473,7 @@ function loadState(){
     if(!S.errorLog)S.errorLog={};
     loaded=true;
   }catch(e){console.warn('[OPJ v28] loadState:',e);}
-  if(!loaded){const old=localStorage.getItem('opje_v51')||localStorage.getItem('opje_v30')||localStorage.getItem('opj_v30')||localStorage.getItem('opje_v29')||localStorage.getItem('opj_v29');
+  if(!loaded){const old=localStorage.getItem('opje_v57')||localStorage.getItem('opje_v51')||localStorage.getItem('opje_v30')||localStorage.getItem('opj_v30')||localStorage.getItem('opje_v29')||localStorage.getItem('opj_v29');
     if(old){try{const d=JSON.parse(old);S={...defaultState(),...d};save();}catch(e){}}
   }
 
@@ -1433,39 +1433,23 @@ function renderRevThemes(){
     const pctDone=Math.round(done/pool.length*100);
     const pctOk=done>0?Math.round(ok/done*100):0;
     const completed=done===pool.length&&pool.length>0;
-    return`<div onclick="startSession('${t.cat}')" style="
-  display:flex;align-items:center;gap:10px;
-  padding:12px;
-  background:#0c1220;
-  border:1px solid rgba(255,255,255,.08);
-  border-left:3px solid ${t.color};
-  border-radius:12px;
-  margin-bottom:8px;
-  cursor:pointer;
+    return`<div onclick="startSession('${t.cat}')" class="theme-card" style="
+  --tc:${t.color};
   animation:fadeUp .15s ${i*0.025}s both;
-  width:100%;
-  box-sizing:border-box;
-  max-width:100%;
-  overflow:hidden;
 ">
-  <div style="
-    width:38px;height:38px;border-radius:8px;
-    background:${t.color}20;border:1.5px solid ${t.color}40;
-    display:flex;align-items:center;justify-content:center;
-    font-size:18px;flex-shrink:0;
-  ">${t.em}</div>
+  <div class="theme-card-ico" style="background:${t.color}15;border-color:${t.color}35">${t.em}</div>
   <div style="flex:1;min-width:0;overflow:hidden;">
-    <div style="font-size:13px;font-weight:700;color:#e8eeff;
+    <div style="font-size:13px;font-weight:700;color:var(--t1);
       margin-bottom:3px;white-space:nowrap;overflow:hidden;
       text-overflow:ellipsis;">${t.name}</div>
     <div style="display:flex;align-items:center;gap:5px;margin-bottom:5px;flex-wrap:wrap;">
-      <span style="font-size:9px;color:#3a4a6b;font-family:'JetBrains Mono',monospace;">
+      <span style="font-size:9px;color:var(--t3);font-family:'JetBrains Mono',monospace;">
         ${pool.length} questions
       </span>
-      ${due>0?`<span style="font-size:9px;font-weight:700;color:#ff8c42;background:rgba(255,140,66,.1);border:1px solid rgba(255,140,66,.25);border-radius:4px;padding:1px 5px;font-family:'JetBrains Mono',monospace;">⚡ ${due} à réviser</span>`:''}
-      ${completed?`<span style="font-size:9px;font-weight:700;color:#00c97a;background:rgba(0,201,122,.1);border:1px solid rgba(0,201,122,.25);border-radius:4px;padding:1px 5px;">✓ Complété</span>`:''}
+      ${due>0?`<span style="font-size:9px;font-weight:700;color:var(--warn);background:var(--warn-bg);border:1px solid rgba(255,140,66,.25);border-radius:4px;padding:1px 5px;font-family:'JetBrains Mono',monospace;">⚡ ${due}</span>`:''}
+      ${completed?`<span style="font-size:9px;font-weight:700;color:var(--ok);background:var(--ok-bg);border:1px solid rgba(0,201,122,.25);border-radius:4px;padding:1px 5px;">✓</span>`:''}
     </div>
-    <div style="height:3px;background:#111827;border-radius:100px;overflow:hidden;">
+    <div style="height:3px;background:var(--bg-3);border-radius:100px;overflow:hidden;">
       <div style="height:100%;width:${pctDone}%;background:${t.color};border-radius:100px;opacity:.85;"></div>
     </div>
   </div>
@@ -1877,7 +1861,8 @@ function buildSession(pool,minutes=0){_beginSession(pool,minutes);}
 function renderCurrentQ(){
   const q=S.qcm.queue[S.qcm.idx];if(!q)return;
   const tot=S.qcm.queue.length;
-  document.getElementById('qcm-prog-txt').textContent=(S.qcm.idx+1)+'/'+tot;
+  const _progTxt=document.getElementById('qcm-prog-txt');
+  if(_progTxt)_progTxt.textContent=(S.qcm.idx+1)+'/'+tot;
   const dots=Array.from({length:tot},(_,i)=>`<div class="q-dot ${i<S.qcm.idx?'done':i===S.qcm.idx?'cur':''}"></div>`).join('');
   const letters=['A','B','C','D'];
   const answered=S.qcm.answered;
@@ -2459,7 +2444,7 @@ const LECONS=[
 
 const LEC={
   render(){
-    const el=document.getElementById('lecons-list'); if(!el)return;
+    const el=document.getElementById('lecons-list')||document.getElementById('chapters-list'); if(!el)return;
     let done={};try{const r=localStorage.getItem('opj_lec');if(r)done=JSON.parse(r);}catch(e){}
     const dc=Object.keys(done).length;
     el.innerHTML=`<div class="sec-hd"><h4>Toutes les leçons</h4><span class="cnt">${dc}/${LECONS.length} vues</span></div>`
@@ -5154,19 +5139,21 @@ function startOfflineMode() {
 }
 
 function finishAuth(name) {
+  S.user.name = name || S.user.name || 'Officier';
+  S.page = 'home';
+  save();
+
   const onb = document.getElementById('onboarding');
   const app = document.getElementById('app');
   if (onb) onb.style.display = 'none';
   if (app) { app.style.display = 'flex'; app.style.flexDirection = 'column'; }
   const _bn = document.getElementById('bnav'); if (_bn) _bn.style.display = 'flex';
   
-  // Afficher/masquer bouton déconnexion
   const btnLogout = document.getElementById('btn-logout');
   if (btnLogout) {
     btnLogout.style.display = currentUser ? 'flex' : 'none';
   }
   
-  // Mettre à jour le statut sync
   const syncStatus = document.getElementById('sync-status');
   if (syncStatus) {
     syncStatus.textContent = currentUser ? 'Cloud ☁️' : 'Local';
@@ -5174,7 +5161,7 @@ function finishAuth(name) {
   
   try { updateStreak(); } catch(e) {}
   try { navigateTo('home'); } catch(e) {}
-  try { showToast('Bienvenue ' + name + ' ! 🎯', 'ok'); } catch(e) {}
+  try { showToast('Bienvenue ' + S.user.name + ' ! 🎯', 'ok'); } catch(e) {}
   try { BADGES.checkAll(); } catch(e) {}
   try { renderMotivBanner(); } catch(e) {}
 }

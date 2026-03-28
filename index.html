@@ -619,7 +619,7 @@ body.app-shell{display:flex;flex-direction:column;min-height:100dvh}
   animation:shimmer 1.2s infinite;
   border-radius:12px;
 }
-@keyframes shimmer{to{background-position:-200% 0}}
+@keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
 .skeleton-ft-wrap{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-start}
 </style>
 </head>
@@ -706,6 +706,10 @@ body.app-shell{display:flex;flex-direction:column;min-height:100dvh}
 <div id="patch-missions" class="missions missions-card"></div>
 <div class="countdown" id="h-exam-countdown"><div class="cd-num-wrap"><div class="cd-days" id="h-exam-days">—</div></div><div class="cd-copy"><div class="cd-lbl">Jours avant l'examen OPJ</div><div class="cd-sub" id="h-exam-session">SESSION JUIN 2026</div></div></div>
 <div id="h-weak-widget"></div>
+<div id="h-chapter-progress"></div>
+<div id="h-motiv-banner" style="display:none"></div>
+<div id="h-defi-widget"></div>
+<div id="patch-studyplan"></div>
 <div class="pro-teaser pro-teaser--home" id="h-pro-teaser" role="button" tabindex="0" onclick="P&&P.showPro()"><div class="pro-crown">&#x1F451;</div><div class="pro-body"><div class="pro-ttl">OPJ Elite PRO</div><div class="pro-sub">Débloque tout le contenu premium</div></div><div class="pro-arr">></div></div>
 </div>
 </div>
@@ -767,15 +771,25 @@ body.app-shell{display:flex;flex-direction:column;min-height:100dvh}
     <div style="background:var(--bg-2);border:1px solid var(--brd);border-radius:10px;padding:10px 4px;text-align:center"><div id="qs-master" style="font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:900;color:var(--gold)">0</div><div style="font-size:8px;color:var(--t3);text-transform:uppercase;margin-top:2px">Maîtrisées</div></div>
   </div>
 </div>
-<div id="rev-due-count" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--t3);margin-bottom:12px;text-align:center"></div>
+<div id="rev-due-count" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--t3);margin-bottom:8px;text-align:center"></div>
+<div id="qcm-themes-count" style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--t3);margin-bottom:12px;text-align:center"></div>
+<div class="error-review-card" id="error-review-card" style="display:none" onclick="startErrorReview()" role="button" tabindex="0">
+  <div class="er-icon">🔁</div>
+  <div class="er-text">
+    <div class="er-title">Réviser mes erreurs</div>
+    <div class="er-sub" id="er-sub-text">Tes catégories les plus faibles</div>
+  </div>
+</div>
 <div id="theme-list"></div>
 <div id="qcm-session" style="display:none">
   <div id="qcm-hdr" style="display:flex;align-items:center;
     justify-content:space-between;margin-bottom:16px">
     <div id="qcm-cat-lbl" style="font-family:'JetBrains Mono',
       monospace;font-size:11px;color:var(--t3)"></div>
-    <div id="qcm-timer-display" style="font-family:'JetBrains Mono',
-      monospace;font-size:13px;font-weight:700;color:var(--t1)"></div>
+    <div id="qcm-prog-txt" style="font-family:'JetBrains Mono',
+      monospace;font-size:12px;font-weight:700;color:var(--t2)"></div>
+    <div id="qcm-timer" style="font-family:'JetBrains Mono',
+      monospace;font-size:13px;font-weight:700;color:var(--t1);display:none"></div>
   </div>
   <div id="qcm-progress-bar" style="height:3px;background:var(--bg-3);
     border-radius:100px;overflow:hidden;margin-bottom:20px">
@@ -837,7 +851,20 @@ body.app-shell{display:flex;flex-direction:column;min-height:100dvh}
   <div id="print-list"></div>
 </div>
 <div id="qcm-session-ov" style="display:none"></div>
-<div id="qcm-results" style="display:none"></div>
+<div id="qcm-results" style="display:none">
+  <div style="padding:24px 0;text-align:center">
+    <div id="qr-tier" class="qr-tier" style="font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;margin-bottom:12px;color:var(--t3)">RÉSULTATS</div>
+    <div id="qr-score-big" style="font-family:'Syne',sans-serif;font-size:48px;font-weight:800;color:var(--t1);line-height:1;margin-bottom:6px">0/0</div>
+    <div id="qr-msg" style="font-size:14px;color:var(--t2);margin-bottom:16px">Continue, tu progresses !</div>
+    <div id="qr-xp-anim" style="font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:800;color:var(--ok);margin-bottom:20px">+0 XP</div>
+    <div id="qr-stats-compact" style="display:flex;justify-content:center;gap:8px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--t3);margin-bottom:20px"></div>
+    <div id="qr-errors" style="text-align:left;margin-bottom:20px"></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-ghost" onclick="exitQCM()" style="flex:1;padding:12px;font-size:13px;font-weight:700;border-radius:var(--r-l)">← Retour</button>
+      <button class="btn btn-accent" onclick="replayLastQcmSession()" style="flex:1;padding:12px;font-size:13px;font-weight:700;border-radius:var(--r-l)">Rejouer ↻</button>
+    </div>
+  </div>
+</div>
 </div><!-- /rev-menu -->
 </div>
 </div>
@@ -855,6 +882,35 @@ body.app-shell{display:flex;flex-direction:column;min-height:100dvh}
 <div class="slbl">Exercices procéduraux</div>
 <div class="mcard" role="button" tabindex="0" onclick="QUALIF.start()"><div class="m-ico2" style="background:rgba(124,58,237,.1)">&#x2696;&#xFE0F;</div><div class="m-inf"><h4>Qualifie les faits</h4><p>Scénario — qualification — article — peine</p><div class="mtags"><span class="mt v">10 scénarios</span><span class="mt v">Progressif</span></div></div></div>
 <div class="mcard" role="button" tabindex="0" onclick="startCRTimer()"><div class="m-ico2" style="background:rgba(124,58,237,.1)">&#x1F4DE;</div><div class="m-inf"><h4>Simulateur CR Parquet</h4><p>40 min préparation + 20 min oral — Timer auto</p><div class="mtags"><span class="mt v">Épreuve orale</span><span class="mt b">Timer 2 phases</span></div></div></div>
+
+<!-- Cartouches PV -->
+<div id="cm" style="display:none">
+  <div class="slbl">Cartouches PV</div>
+  <div class="mcard" role="button" tabindex="0" onclick="C.start('gav')"><div class="m-ico2" style="background:rgba(59,130,246,.1)">📝</div><div class="m-inf"><h4>PV de GAV</h4><p>Rédigez une cartouche complète</p></div></div>
+  <div class="mcard" role="button" tabindex="0" onclick="C.start('perq')"><div class="m-ico2" style="background:rgba(139,92,246,.1)">🔍</div><div class="m-inf"><h4>PV de Perquisition</h4><p>Mentions obligatoires art. 57 CPP</p></div></div>
+  <div class="mcard" role="button" tabindex="0" onclick="C.timeline()"><div class="m-ico2" style="background:rgba(0,201,122,.1)">⏱️</div><div class="m-inf"><h4>Timeline GAV</h4><p>Générateur automatique de chronologie</p></div></div>
+</div>
+<div id="ct" style="display:none">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+    <button class="btn btn-ghost btn-sm" onclick="C.back()" aria-label="Retour">← Retour</button>
+    <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:var(--t1)">Timeline GAV</div>
+  </div>
+  <div class="field" style="margin-bottom:12px"><label style="font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px;display:block">Heure début GAV</label><input type="datetime-local" id="tl-start" class="finp" style="width:100%;background:var(--bg-2);border:1px solid var(--brd-l);border-radius:var(--r-m);padding:12px;color:var(--t1)"></div>
+  <div class="field" style="margin-bottom:12px"><label style="font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px;display:block">Régime</label><select id="tl-reg" class="finp" style="width:100%;background:var(--bg-2);border:1px solid var(--brd-l);border-radius:var(--r-m);padding:12px;color:var(--t1)"><option value="dc">Droit commun</option><option value="co">Criminalité organisée</option></select></div>
+  <button class="btn-main" onclick="C.genTL()">Générer la timeline</button>
+  <div id="tl-out" style="margin-top:16px"></div>
+</div>
+<div id="ca" style="display:none">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+    <button class="btn btn-ghost btn-sm" onclick="C.back()" aria-label="Retour">← Retour</button>
+    <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:var(--t1)" id="ca-bg"></div>
+  </div>
+  <div id="ca-ti" style="font-size:14px;color:var(--t2);margin-bottom:4px"></div>
+  <div id="ca-st" style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--t3);margin-bottom:16px"></div>
+  <div id="ca-f"></div>
+  <button class="btn-main" onclick="C.validate()" style="margin-top:16px">Valider la cartouche</button>
+  <div id="ca-r" style="display:none;margin-top:16px"></div>
+</div>
 </div>
 </div>
 
@@ -928,8 +984,6 @@ body.app-shell{display:flex;flex-direction:column;min-height:100dvh}
   <h4 class="sec-hd-sm">Activité 30 jours</h4>
   <div id="pr-prog-30"></div>
 </div>
-<div class="slbl">Activité 30 jours</div>
-<div class="act-chart"><div class="act-bars" id="pr-activity-bars" style="display:flex;align-items:flex-end;gap:2px;height:48px;padding:0 4px"></div><div class="act-lbl" id="pr-activity-lbl">Activité récente</div></div>
 <div class="profil-section">
   <div id="pr-readiness"></div>
 </div>
@@ -944,7 +998,8 @@ body.app-shell{display:flex;flex-direction:column;min-height:100dvh}
   <div class="pmenu-item" role="button" tabindex="0" onclick="showGrades()"><div class="pmenu-ico">&#x1F3C5;</div><div class="pmenu-lbl">Tableau des grades</div><div class="pmenu-arr">></div></div>
   <div class="pmenu-item" role="button" tabindex="0" onclick="THEME28&&THEME28.toggle()"><div class="pmenu-ico">&#x1F319;</div><div class="pmenu-lbl" id="theme-label">Mode clair</div><div class="pmenu-arr">></div></div>
   <div class="pmenu-item" role="button" tabindex="0" onclick="showAccountModal()"><div class="pmenu-ico">&#x1F464;</div><div class="pmenu-lbl">Mon compte</div><div class="pmenu-arr">></div></div>
-  <div class="pmenu-item"><div class="pmenu-ico" style="font-size:11px">v52</div><div class="pmenu-lbl" style="color:var(--t2);font-size:12px">OPJ Elite</div></div>
+  <div class="pmenu-item" id="btn-logout" style="display:none" role="button" tabindex="0" onclick="doLogout&&doLogout()"><div class="pmenu-ico">🚪</div><div class="pmenu-lbl" style="color:var(--err)">Déconnexion</div><div class="pmenu-arr">></div></div>
+  <div class="pmenu-item"><div class="pmenu-ico" style="font-size:11px">v58</div><div class="pmenu-lbl" style="color:var(--t2);font-size:12px">OPJ Elite · <span id="sync-status">Local</span></div></div>
 </div>
 </div>
 </div>
@@ -978,7 +1033,7 @@ body.app-shell{display:flex;flex-direction:column;min-height:100dvh}
 <div id="ann-ov" role="dialog" aria-modal="true" style="display:none;position:fixed;inset:0;z-index:var(--z-modal);flex-direction:column;background:var(--bg-0)"><div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--brd)"><div style="font-family:'Syne',sans-serif;font-size:17px;font-weight:800;color:var(--t1)">Annale</div><button onclick="closeAnnale()" style="color:var(--t2);background:none;border:none;font-size:20px;cursor:pointer" aria-label="Fermer">✕</button></div><div id="ann-body" style="flex:1;overflow-y:auto;padding:16px"></div></div>
 <div id="pf-ov" role="dialog" aria-modal="true" style="display:none;position:fixed;inset:0;z-index:var(--z-modal);align-items:flex-end;background:rgba(0,0,0,.68);backdrop-filter:blur(10px)" onclick="if(event.target===this)PFM.close()"><div id="pf-body" style="width:100%;max-height:92dvh;background:var(--bg-1);border-radius:24px 24px 0 0;overflow-y:auto;padding-bottom:env(safe-area-inset-bottom)"></div></div>
 <div id="eval-ov" role="dialog" aria-modal="true" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:var(--z-toast);background:rgba(0,0,0,.78);backdrop-filter:blur(12px);padding:16px"><div class="modal-box" style="background:var(--bg-1);border-radius:var(--r-3xl);padding:22px;max-width:460px;width:100%;max-height:88dvh;overflow-y:auto"><div style="font-family:'Syne',sans-serif;font-size:17px;font-weight:800;color:var(--t1);margin-bottom:14px">Auto-évaluation CR</div><div id="eval-list"></div><div id="eval-result" style="display:none;margin-top:12px;text-align:center"></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px"><button class="btn-p" onclick="EVAL.calc()">Calculer</button><button class="btn-ghost" onclick="EVAL.close()">Fermer</button></div></div></div>
-<div id="cr-timer-ov" role="dialog" aria-modal="true" style="display:none;position:fixed;inset:0;background:var(--bg-overlay);z-index:var(--z-modal);flex-direction:column;align-items:center;justify-content:center;gap:20px"><div id="cr-phase-lbl" style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:var(--t1)">Préparation</div><div id="cr-timer-disp" style="font-family:'JetBrains Mono',monospace;font-size:72px;font-weight:700;color:var(--accent-l);line-height:1">40:00</div><button id="cr-skip-btn" class="btn-sec" style="min-width:180px" onclick="skipCRPhase()">→ Passer à l'oral</button><button class="btn-ghost" onclick="stopCRTimer()">Arrêter</button></div>
+<div id="cr-timer-ov" role="dialog" aria-modal="true" style="display:none;position:fixed;inset:0;background:var(--bg-overlay);z-index:var(--z-modal);flex-direction:column;align-items:center;justify-content:center;gap:20px"><div id="cr-phase-lbl" style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:var(--t1)">Préparation</div><div id="cr-phase-sub" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--t3)"></div><div id="cr-timer-disp" style="font-family:'JetBrains Mono',monospace;font-size:72px;font-weight:700;color:var(--accent-l);line-height:1">40:00</div><button id="cr-skip-btn" class="btn-sec" style="min-width:180px" onclick="skipCRPhase()">→ Passer à l'oral</button><button class="btn-ghost" onclick="stopCRTimer()">Arrêter</button></div>
 <div id="blitz-ov" role="dialog" aria-modal="true" style="position:fixed;inset:0;background:var(--bg-0);z-index:var(--z-modal);display:none;flex-direction:column;align-items:center;justify-content:center;padding:24px"><div style="display:flex;align-items:center;gap:10px;width:100%;margin-bottom:20px"><div style="height:5px;flex:1;background:var(--bg-3);border-radius:100px;overflow:hidden"><div id="blitz-timer-fill" style="height:100%;width:100%;border-radius:100px;background:linear-gradient(90deg,var(--ok),var(--warn),var(--err));transition:width .1s linear"></div></div><span id="blitz-timer-display" style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:var(--t3);min-width:24px">60</span><button onclick="BLITZ.stop()" style="color:var(--t3);font-size:18px;background:none;border:none;cursor:pointer" aria-label="Fermer">✕</button></div><div id="blitz-counter" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--t3);margin-bottom:16px">1/10</div><div id="blitz-question" style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:var(--t1);text-align:center;line-height:1.45;margin-bottom:28px;max-width:340px"></div><div style="display:flex;gap:14px;width:100%;max-width:340px"><button id="blitz-faux" class="blitz-btn" style="flex:1;padding:16px;border-radius:var(--r-xl);border:none;cursor:pointer;font-size:15px;font-weight:800;background:linear-gradient(135deg,var(--err),#cc2a40);color:#fff" onclick="BLITZ.answer(false)">✗ FAUX</button><button id="blitz-vrai" class="blitz-btn" style="flex:1;padding:16px;border-radius:var(--r-xl);border:none;cursor:pointer;font-size:15px;font-weight:800;background:linear-gradient(135deg,var(--ok),#00a864);color:#fff" onclick="BLITZ.answer(true)">✓ VRAI</button></div></div>
 <div id="blitz-results-ov" role="dialog" aria-modal="true" style="position:fixed;inset:0;background:var(--bg-0);z-index:calc(var(--z-modal) + 5);display:none;flex-direction:column;align-items:center;justify-content:center;padding:24px"><div style="font-size:52px;margin-bottom:12px" id="blitz-res-emoji">👍</div><div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:900;color:var(--t1);margin-bottom:6px" id="blitz-res-score">0/10</div><div id="blitz-res-xp" style="font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--gold);margin-bottom:16px">+0 XP</div><div id="blitz-review" style="width:100%;max-width:400px;max-height:40vh;overflow-y:auto;margin-bottom:16px"></div><button class="btn-main" onclick="BLITZ.backToMenu()">← Retour</button></div>
 <div id="classify-ov" role="dialog" aria-modal="true" style="position:fixed;inset:0;background:var(--bg-0);z-index:var(--z-modal);display:none;flex-direction:column"><div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--brd)"><div style="font-family:'Syne',sans-serif;font-size:17px;font-weight:800;color:var(--t1)">Classifie</div><button onclick="CLASSIF.stop()" style="color:var(--t2);background:none;border:none;font-size:20px;cursor:pointer" aria-label="Fermer">✕</button></div><div style="flex:1;overflow-y:auto;padding:14px"><div id="classif-items" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px"></div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px"><div style="background:var(--err-bg);border:2px dashed rgba(255,61,87,.3);border-radius:var(--r-l);min-height:120px;padding:8px" ondragover="CLASSIF.dragOver(event,'Crime')" ondragleave="CLASSIF.dragLeave(event)" ondrop="CLASSIF.drop(event,'Crime')" onclick="CLASSIF._selected&&CLASSIF._place(CLASSIF._selected,'Crime')"><div style="font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;color:var(--err);margin-bottom:6px;text-align:center">CRIME</div></div><div style="background:rgba(27,107,255,.07);border:2px dashed rgba(27,107,255,.2);border-radius:var(--r-l);min-height:120px;padding:8px" ondragover="CLASSIF.dragOver(event,'Dlit')" ondragleave="CLASSIF.dragLeave(event)" ondrop="CLASSIF.drop(event,'Dlit')" onclick="CLASSIF._selected&&CLASSIF._place(CLASSIF._selected,'Dlit')"><div style="font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;color:var(--accent-xl);margin-bottom:6px;text-align:center">DÉLIT</div></div><div style="background:var(--warn-bg);border:2px dashed rgba(255,140,66,.25);border-radius:var(--r-l);min-height:120px;padding:8px" ondragover="CLASSIF.dragOver(event,'Contravention')" ondragleave="CLASSIF.dragLeave(event)" ondrop="CLASSIF.drop(event,'Contravention')" onclick="CLASSIF._selected&&CLASSIF._place(CLASSIF._selected,'Contravention')"><div style="font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;color:var(--warn);margin-bottom:6px;text-align:center">CONTRA.</div></div></div></div><div style="padding:10px 14px;border-top:1px solid var(--brd)"><div id="classif-result" style="display:none;text-align:center;margin-bottom:10px"><div style="font-size:22px" id="classif-res-emoji">👍</div><div id="classif-res-score" style="font-size:14px;font-weight:700;margin-top:4px"></div></div><button id="classif-validate-btn" style="display:none;width:100%" class="btn-main" onclick="CLASSIF.validate()">✓ Valider mes réponses</button></div></div>
@@ -1032,6 +1087,9 @@ body.app-shell{display:flex;flex-direction:column;min-height:100dvh}
 <script src="./js/data/chapters.js"></script>
 <script src="./js/data/questions.js"></script>
 <script src="./js/data/flashcards.js"></script>
+<script src="./js/data/procedures.js"></script>
+<script src="./js/data/annales.js"></script>
+<script src="./js/data/printsheets.js"></script>
 <script src="./js/app.js"></script>
 </body>
 </html>
