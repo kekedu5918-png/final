@@ -2189,6 +2189,7 @@ function renderRevision(){
 function setRevTab(tab){
   S.rev=S.rev||{};
   tab=normalizeRevTab(tab);
+  if(tab!=='fiches')_activeFam=null;
   S.rev.tab=tab;
   const tabs=['reviser','fiches','procedures','entrainement','ressources'];
   tabs.forEach(t=>{
@@ -2737,10 +2738,12 @@ function renderDueFlashWrap(){
   wrap.innerHTML=`<button type="button" class="btn btn-p btn-full" style="margin-top:8px;font-size:13px;font-weight:700" onclick="startDueSession()">🎯 ${n} fiche${n>1?'s':''} à réviser aujourd’hui</button>`;
 }
 
+let _activeFam=null;
+
 function renderBubbles(){
   const grid=document.getElementById('bubble-grid');if(!grid)return;
   renderDueFlashWrap();
-  grid.style.cssText='display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:0;box-sizing:border-box;width:100%;';
+  grid.style.cssText='display:block;width:100%;box-sizing:border-box;padding:0;';
   const search=(document.getElementById('fiches-search')?.value||'').toLowerCase();
 
   const FAMILIES={
@@ -2784,8 +2787,13 @@ function renderBubbles(){
       'RECEL':'Recel','OUTRAGE':'Outrage','RÉBELLION':'Rébellion','USAGE STUPÉFIANTS':'Usage stups',
       'CONDUITE ALCOOLIQUE':'Conduite alcool','EXTORSION':'Extorsion','TRAFIC STUPÉFIANTS':'Trafic stups',
       'CORRUPTION PASSIVE':'Corruption',
+      'AGRESSION SEXUELLE':'Agress. sex.','VIOLENCE CONJUGALE':'Violence conj.','NON-ASSISTANCE':'Non-assistance',
+      'ASSASSINAT':'Assassinat','SÉQUESTRATION':'Séquestration','TRAITE DES ÊTRES':'Traite êtres',
+      'ABUS DE FAIBLESSE':'Abus faiblesse','DÉLAISSEMENT':'Délaissement','FAUX ET USAGE':'Faux et usage',
+      'BLANCHIMENT':'Blanchiment','PROXÉNÉTISME':'Proxénétisme','CORRUPTION ACTIVE':'Corrupt. active',
+      'PRISE ILLÉGALE':'Prise illégale','DÉTOURNEMENT':'Détournement','ADMINISTRATION DE SUBSTANCE':'Admin. substance',
     };
-    return map[nm]||(nm.length>12?nm.slice(0,11)+'…':nm);
+    return map[nm]||(nm.length>16?nm.slice(0,15)+'…':nm);
   };
 
   /* Tile individuelle */
@@ -2803,9 +2811,9 @@ function renderBubbles(){
           :isLearning?`<div class="ft-dot"></div>`
           :`<div class="ft-lock"></div>`}
       </div>
-      <div class="ft-em">${eh(f.em)}</div>
+      <div class="ft-em" style="font-size:28px;margin-bottom:2px">${eh(f.em)}</div>
       <div class="ft-nm">${eh(shortNm(f.nm))}</div>
-      <div class="ft-qual" style="background:${color}22;color:${color}">${eh(f.qual)}</div>
+      <div class="ft-qual" style="font-size:9px;font-family:'JetBrains Mono',monospace;font-weight:700;padding:2px 7px;border-radius:8px;background:${fam?.color?fam.color+'22':'rgba(99,102,241,0.15)'};color:${fam?.color||'var(--accent)'};margin-top:3px;flex-shrink:0;white-space:nowrap">${eh(f.qual)}</div>
     </div>`;
   };
 
@@ -2816,35 +2824,51 @@ function renderBubbles(){
     return;
   }
 
-  /* Groupes par famille */
-  let html='';
-  Object.entries(FAMILIES).forEach(([key,fam])=>{
+  /* ── Niveau 1 : rangée de bulles catégories (drill-down) ── */
+  const famKeys=Object.keys(FAMILIES).filter(k=>filtered.some(f=>f.fam===k));
+  if(!famKeys.length){
+    gridEl.innerHTML=`<div class="empty-state"><span class="empty-state-em">🔍</span>Aucune fiche</div>`;
+    renderDueFlashWrap();
+    return;
+  }
+  if(_activeFam&&!famKeys.includes(_activeFam))_activeFam=null;
+  let bubblesHtml=`<div class="fam-bubbles" id="fam-bubbles-row">`;
+  famKeys.forEach(key=>{
+    const fam=FAMILIES[key];
     const items=filtered.filter(f=>f.fam===key);
-    if(!items.length)return;
-    const famMastered=items.filter(f=>S.fs[f.id]==='m').length;
-    const famPct=Math.round(famMastered/items.length*100);
-    const allDone=famMastered===items.length;
-    html+=`
-    <div class="ft-group" style="--fg:${fam.color};--fgg:${fam.grad}">
-      <div class="ft-group-hd">
-        <div class="ft-group-ico">${fam.em}</div>
-        <div class="ft-group-info">
-          <div class="ft-group-title">${fam.label}</div>
-          <div class="ft-group-prog">
-            <div class="ft-group-bar"><div class="ft-group-fill" style="width:${famPct}%;background:${fam.color}"></div></div>
-            <span class="ft-group-cnt" style="color:${allDone?'var(--gold)':fam.color}">${allDone?'★ Complète':famMastered+'/'+items.length}</span>
-          </div>
-        </div>
-      </div>
-      <div class="ft-grid">${items.map((f,i)=>tile(f,i,fam)).join('')}</div>
-    </div>`;
+    const mastered=items.filter(f=>S.fs[f.id]==='m').length;
+    const isActive=_activeFam===key||(!_activeFam&&key===famKeys[0]);
+    bubblesHtml+=`
+  <div class="fam-bubble${isActive?' active':''}"
+       style="--fc:${fam.color}"
+       onclick="selectFamBubble('${key}')"
+       role="button" tabindex="0">
+    <div class="fam-bubble-ico">${fam.em}</div>
+    <div class="fam-bubble-label">${eh(fam.label)}</div>
+    <div class="fam-bubble-cnt">${mastered}/${items.length}</div>
+  </div>`;
   });
-  gridEl.innerHTML=html;
+  bubblesHtml+=`</div>`;
+  if(!_activeFam)_activeFam=famKeys[0];
+  const activeFam=FAMILIES[_activeFam];
+  const activeItems=filtered.filter(f=>f.fam===_activeFam);
+  const gridHtml=`<div class="ft-grid" id="fam-active-grid">
+  ${activeItems.map((f,i)=>tile(f,i,activeFam)).join('')}
+</div>`;
+  gridEl.innerHTML=bubblesHtml+gridHtml;
   renderDueFlashWrap();
   },150);
 }
 
-
+function selectFamBubble(key){
+  _activeFam=key;
+  renderBubbles();
+  setTimeout(()=>{
+    document.getElementById('fam-active-grid')
+      ?.scrollIntoView({behavior:'smooth',block:'nearest'});
+  },200);
+}
+window.selectFamBubble=selectFamBubble;
 
 function openFiche(id){
   const f=FB.find(x=>x.id===id);if(!f)return;
