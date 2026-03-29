@@ -1,10 +1,10 @@
 /* ═══════════════════════════════════════════════════════
-   OPJ ELITE — Service Worker v90
+   Service Worker v94
    Chemins relatifs pour GitHub Pages (sous-dossier).
    Toutes les URLs sont résolues via self.registration.scope.
    ═══════════════════════════════════════════════════════ */
 
-const CACHE = 'opj-v90';
+const CACHE = 'opj-v94';
 
 const STATIC = [
   './',
@@ -98,10 +98,13 @@ self.addEventListener('fetch', e => {
         }
         return response;
       }).catch(() => {
-        /* Offline fallback : retourner index.html pour les navigations */
         if (e.request.mode === 'navigate') {
-          return caches.match(new URL('./index.html', self.registration.scope).href);
+          return caches.match(
+            new URL('./index.html', self.registration.scope).href
+          );
         }
+        return caches.match(e.request)
+          .then(c => c || Response.error());
       });
     })
   );
