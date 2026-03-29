@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover,maximum-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
 <title>OPJ Elite</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -83,8 +86,10 @@ button{cursor:pointer;border:none;background:none}
 .brand-logo{font-family:'Syne',system-ui,sans-serif;font-size:54px;font-weight:800;color:var(--t1);letter-spacing:-.04em;line-height:1;margin-bottom:6px}
 .brand-logo b{font-style:normal;background:linear-gradient(135deg,var(--accent-l),var(--cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
 .brand-rule{display:block;height:2px;margin:10px auto 0;width:155px;background:linear-gradient(90deg,transparent,var(--accent) 25%,var(--accent-l) 55%,var(--gold) 80%,transparent);border-radius:2px;opacity:.65;box-shadow:0 0 10px rgba(27,107,255,.28)}
-.brand-sub{font-size:12px;color:var(--t2);margin-top:12px;font-family:'JetBrains Mono',monospace;letter-spacing:.04em;line-height:1.6}
+.brand-sub{font-size:12px;color:var(--t2);margin-top:12px;font-family:'Inter',system-ui,sans-serif;letter-spacing:.02em;line-height:1.55;max-width:340px;margin-left:auto;margin-right:auto}
 .brand-sub strong{color:var(--gold-l);font-weight:700}
+.brand-time{font-size:11px;color:var(--t3);margin-top:10px;line-height:1.5;max-width:340px;margin-left:auto;margin-right:auto}
+.brand-time strong{color:var(--accent-xl);font-weight:700}
 
 /* KPIs */
 .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:16px}
@@ -258,7 +263,8 @@ button{cursor:pointer;border:none;background:none}
   <div class="brand">
     <div class="brand-logo">OPJ <b>Elite</b></div>
     <span class="brand-rule"></span>
-    <div class="brand-sub">La référence <strong>#1</strong> pour l'examen<br>d'Officier de Police Judiciaire</div>
+    <div class="brand-sub">Préparation à l'<strong>habilitation OPJ</strong> (fonctionnaire déjà en poste) : oral, infractions, PV — révisez aussi <strong>sans connexion</strong> après la première ouverture de l'app.</div>
+    <p class="brand-time">En moyenne, <strong>≈ 15 min / jour</strong> suffisent pour progresser sereinement — sans tout sacrifier au planning.</p>
     <div class="kpis">
       <div class="kpi"><div class="kpi-v acc">160+</div><div class="kpi-l">Questions</div></div>
       <div class="kpi"><div class="kpi-v">13</div><div class="kpi-l">Chapitres</div></div>
@@ -338,9 +344,9 @@ button{cursor:pointer;border:none;background:none}
         </div>
       </div>
       <div class="field">
-        <div class="flbl">Date de l'examen</div>
+        <div class="flbl">Date de l'examen (jour J)</div>
         <div class="finp-wrap">
-          <input type="month" id="signup-date" class="finp" value="2026-06" min="2025-01">
+          <input type="date" id="signup-date" class="finp" value="2026-06-15" min="2025-01-01">
           <span class="ficon">📅</span>
         </div>
       </div>
@@ -350,7 +356,7 @@ button{cursor:pointer;border:none;background:none}
 
   </div>
 
-  <div class="footer">OPJ Elite v52 &nbsp;·&nbsp; Données sécurisées &nbsp;·&nbsp; 🇫🇷 France</div>
+  <div class="footer">OPJ Elite &nbsp;·&nbsp; Habilitation OPJ &nbsp;·&nbsp; Mode hors-ligne après 1ʳᵉ ouverture &nbsp;·&nbsp; 🇫🇷</div>
 
 </div>
 
@@ -376,6 +382,11 @@ button{cursor:pointer;border:none;background:none}
 
 <div class="toast-zone" id="toast-zone"></div>
 
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js', { scope: './' }).catch(function () {});
+}
+</script>
 <script>
 'use strict';
 
@@ -502,7 +513,7 @@ async function doSignup(){
   const name=document.getElementById('signup-name').value.trim()||'Officier';
   const email=document.getElementById('signup-email').value.trim();
   const pass=document.getElementById('signup-password').value;
-  const date=document.getElementById('signup-date').value||'2026-06';
+  const date=document.getElementById('signup-date').value||'2026-06-15';
   if(!email||!isEmail(email)){showErr('signup-email','err-se','Email invalide');return;}
   if(!pass||pass.length<6){showErr('signup-password','err-sp','6 caractères minimum');return;}
   setLoad('btn-signup',true);

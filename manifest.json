@@ -25,5 +25,13 @@
   ],
   "prefer_related_applications": false,
   "categories": ["education", "productivity"],
-  "screenshots": []
+  "screenshots": [
+    {
+      "src": "icons/screenshot-home.webp",
+      "sizes": "390x844",
+      "type": "image/webp",
+      "form_factor": "narrow",
+      "label": "Tableau de bord OPJ Elite"
+    }
+  ]
 }

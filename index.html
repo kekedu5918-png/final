@@ -651,7 +651,7 @@ body.app-shell{display:flex;flex-direction:column;min-height:100dvh}
   <!-- Streak pill redesignée -->
   <div class="hero-streak-pill" id="h-streak-row">
     <span class="streak-flame-anim">🔥</span>
-    <span id="h-streak">0</span> <span id="h-streak-unit">jour</span> de suite
+    <span id="h-streak">0</span><span id="h-streak-mult"></span> <span id="h-streak-unit">jour</span> de suite
   </div>
 
   <!-- Barre XP -->
@@ -704,7 +704,8 @@ body.app-shell{display:flex;flex-direction:column;min-height:100dvh}
 
 <div id="h-qdj" class="home-qdj-gold"></div>
 <div id="patch-missions" class="missions missions-card"></div>
-<div class="countdown" id="h-exam-countdown"><div class="cd-num-wrap"><div class="cd-days" id="h-exam-days">—</div></div><div class="cd-copy"><div class="cd-lbl">Jours avant l'examen OPJ</div><div class="cd-sub" id="h-exam-session">SESSION JUIN 2026</div></div></div>
+<div class="countdown" id="h-exam-countdown"><div class="cd-num-wrap"><div class="cd-days" id="h-exam-days">—</div></div><div class="cd-copy"><div class="cd-lbl">Jours avant l'examen OPJ</div><div class="cd-sub" id="h-exam-session">SESSION JUIN 2026</div><div class="cd-phase" id="h-exam-phase" style="font-size:11px;margin-top:6px;color:var(--t2);line-height:1.35"></div></div></div>
+<div id="h-exam-hero-actions" class="h-exam-hero-actions" style="display:none" aria-live="polite"></div>
 <div id="h-weak-widget"></div>
 <div id="h-chapter-progress"></div>
 <div id="h-motiv-banner" style="display:none"></div>
@@ -759,6 +760,7 @@ body.app-shell{display:flex;flex-direction:column;min-height:100dvh}
   <button class="rtab" id="rtab-ressources" onclick="setRevTab('ressources')">Ressources</button>
 </div>
 <div id="rtab-reviser-content">
+<div id="rev-smart-alerts" class="rev-smart-alerts" aria-live="polite"></div>
 <div class="qhero">
   <div class="qhero-top">
     <div><div class="qhero-lbl">Révision intelligente</div><div class="qhero-ttl">Adaptée à tes lacunes</div></div>
@@ -789,6 +791,7 @@ body.app-shell{display:flex;flex-direction:column;min-height:100dvh}
       <div><div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:var(--t1)">Infractions</div><div id="fiches-summary" style="font-size:11px;color:var(--t3);margin-top:3px">Chargement...</div></div>
     </div>
     <div style="height:3px;background:var(--bg-3);border-radius:100px;overflow:hidden;margin-top:8px"><div id="fiches-prog-bar" style="height:100%;border-radius:100px;background:linear-gradient(90deg,var(--accent),var(--gold));width:0%;transition:width .6s ease"></div></div>
+    <div id="fiches-due-wrap"></div>
     <div style="margin-top:10px;position:relative"><input id="fiches-search" class="search-inp" placeholder="Rechercher une infraction..." aria-label="Rechercher une infraction..." oninput="renderBubbles()" style="padding-left:16px"></div>
   </div>
   <div id="bubble-grid"></div>
@@ -872,6 +875,7 @@ body.app-shell{display:flex;flex-direction:column;min-height:100dvh}
 <div class="scroll-area">
 <div style="margin-bottom:16px"><div style="font-family:'Syne',system-ui,sans-serif;font-size:28px;font-weight:800;color:var(--t1);letter-spacing:-.03em;margin-bottom:3px">Mode Examen</div><div style="font-size:12px;color:var(--t2)">Conditions réelles — Chrono — Analyse</div></div>
 <div class="slbl">Sessions chronométrées</div>
+<button type="button" id="btn-examen-blanc" class="btn-primary" onclick="startExamenBlanc()" style="width:100%;margin-bottom:14px;padding:14px 16px;border-radius:var(--r-l);font-weight:800;cursor:pointer;font-family:inherit">📋 Lancer l'examen blanc</button>
 <div class="mcard" onclick="startExamSession(40,60)" role="button" tabindex="0"><div class="m-ico2" style="background:var(--err-bg)">&#x1F9E0;</div><div class="m-inf"><h4>QCM Intensif</h4><p>40 questions — 60 minutes — Toutes matières</p><div class="mtags"><span class="mt b">40 QCM</span><span class="mt o">60 min</span><span class="mt r">Difficile</span></div></div></div>
 <div class="mcard" onclick="startExamSession(20,30)" role="button" tabindex="0"><div class="m-ico2" style="background:rgba(27,107,255,.1)">&#x26A1;</div><div class="m-inf"><h4>Session Express</h4><p>20 questions — 30 minutes — Révision quotidienne</p><div class="mtags"><span class="mt b">20 QCM</span><span class="mt o">30 min</span></div></div></div>
 <div class="mcard" onclick="startFlashSession()" role="button" tabindex="0"><div class="m-ico2" style="background:var(--ok-bg)">&#x1F3AF;</div><div class="m-inf"><h4>Flash Session</h4><p>10 questions — Thèmes faibles — Sans chrono</p><div class="mtags"><span class="mt g">10 QCM</span><span class="mt g">Sans chrono</span></div></div></div>
@@ -880,12 +884,21 @@ body.app-shell{display:flex;flex-direction:column;min-height:100dvh}
 <div class="mcard" role="button" tabindex="0" onclick="QUALIF.start()"><div class="m-ico2" style="background:rgba(124,58,237,.1)">&#x2696;&#xFE0F;</div><div class="m-inf"><h4>Qualifie les faits</h4><p>Scénario — qualification — article — peine</p><div class="mtags"><span class="mt v">10 scénarios</span><span class="mt v">Progressif</span></div></div></div>
 <div class="mcard" role="button" tabindex="0" onclick="startCRTimer()"><div class="m-ico2" style="background:rgba(124,58,237,.1)">&#x1F4DE;</div><div class="m-inf"><h4>Simulateur CR Parquet</h4><p>40 min préparation + 20 min oral — Timer auto</p><div class="mtags"><span class="mt v">Épreuve orale</span><span class="mt b">Timer 2 phases</span></div></div></div>
 
-<!-- Cartouches PV -->
+<!-- Cartouches PV (8 canevas rédactionnels + GAV + perquisition sur place) -->
 <div id="cm" style="display:none">
-  <div class="slbl">Cartouches PV</div>
-  <div class="mcard" role="button" tabindex="0" onclick="C.start('gav')"><div class="m-ico2" style="background:rgba(59,130,246,.1)">📝</div><div class="m-inf"><h4>PV de GAV</h4><p>Rédigez une cartouche complète</p></div></div>
-  <div class="mcard" role="button" tabindex="0" onclick="C.start('perq')"><div class="m-ico2" style="background:rgba(139,92,246,.1)">🔍</div><div class="m-inf"><h4>PV de Perquisition</h4><p>Mentions obligatoires art. 57 CPP</p></div></div>
-  <div class="mcard" role="button" tabindex="0" onclick="C.timeline()"><div class="m-ico2" style="background:rgba(0,201,122,.1)">⏱️</div><div class="m-inf"><h4>Timeline GAV</h4><p>Générateur automatique de chronologie</p></div></div>
+  <div class="slbl">Cartouches PV — canevas d'examen</div>
+  <div class="mcard" role="button" tabindex="0" onclick="C.start('st_const')"><div class="m-ico2" style="background:rgba(59,130,246,.1)">📋</div><div class="m-inf"><h4>Saisine — transport — constatations</h4><p>SDIACSS · flagrance</p></div></div>
+  <div class="mcard" role="button" tabindex="0" onclick="C.start('st_inter_pub')"><div class="m-ico2" style="background:rgba(59,130,246,.12)">🚶</div><div class="m-inf"><h4>Saisine — interpellation (voie publique)</h4><p>Usage de la force proportionné</p></div></div>
+  <div class="mcard" role="button" tabindex="0" onclick="C.start('tr_inter_dom')"><div class="m-ico2" style="background:rgba(59,130,246,.08)">🏠</div><div class="m-inf"><h4>Transport — interpellation (domicile)</h4><p>Chaîne horaire · domicile</p></div></div>
+  <div class="mcard" role="button" tabindex="0" onclick="C.start('st_plainte')"><div class="m-ico2" style="background:rgba(200,146,26,.12)">✍️</div><div class="m-inf"><h4>Saisine — plainte</h4><p>Art. 10-2 CPP — droits victime</p></div></div>
+  <div class="mcard" role="button" tabindex="0" onclick="C.start('st_temoin')"><div class="m-ico2" style="background:rgba(16,185,129,.12)">🎙️</div><div class="m-inf"><h4>Saisine — témoignage</h4><p>Art. 61 CPP · PV d'audition</p></div></div>
+  <div class="mcard" role="button" tabindex="0" onclick="C.start('tr_perq')"><div class="m-ico2" style="background:rgba(139,92,246,.12)">🚔</div><div class="m-inf"><h4>Transport — perquisition</h4><p>Présence constante · 803 CPP si besoin</p></div></div>
+  <div class="mcard" role="button" tabindex="0" onclick="C.start('fouille_corps')"><div class="m-ico2" style="background:rgba(255,140,66,.12)">🧍</div><div class="m-inf"><h4>Fouille intégrale</h4><p>Personne · dignité · témoins</p></div></div>
+  <div class="mcard" role="button" tabindex="0" onclick="C.start('fouille_veh')"><div class="m-ico2" style="background:rgba(14,165,233,.12)">🚗</div><div class="m-inf"><h4>Fouille de véhicule</h4><p>Inventaire · cadre légal</p></div></div>
+  <div class="slbl" style="margin-top:14px">Cartouches détaillées</div>
+  <div class="mcard" role="button" tabindex="0" onclick="C.start('gav')"><div class="m-ico2" style="background:rgba(59,130,246,.1)">📝</div><div class="m-inf"><h4>PV de GAV (complet)</h4><p>Art. 64 CPP · mentions obligatoires</p></div></div>
+  <div class="mcard" role="button" tabindex="0" onclick="C.start('perq')"><div class="m-ico2" style="background:rgba(139,92,246,.1)">🔍</div><div class="m-inf"><h4>PV de perquisition (sur place)</h4><p>Art. 57 CPP · inventaire</p></div></div>
+  <div class="mcard" role="button" tabindex="0" onclick="C.timeline()"><div class="m-ico2" style="background:rgba(0,201,122,.1)">⏱️</div><div class="m-inf"><h4>Timeline GAV</h4><p>Chronologie 48h / 96h / 144h</p></div></div>
 </div>
 <div id="ct" style="display:none">
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
@@ -893,7 +906,7 @@ body.app-shell{display:flex;flex-direction:column;min-height:100dvh}
     <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:var(--t1)">Timeline GAV</div>
   </div>
   <div class="field" style="margin-bottom:12px"><label for="tl-start" style="font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px;display:block">Heure début GAV</label><input type="datetime-local" id="tl-start" class="finp" style="width:100%;background:var(--bg-2);border:1px solid var(--brd-l);border-radius:var(--r-m);padding:12px;color:var(--t1)"></div>
-  <div class="field" style="margin-bottom:12px"><label for="tl-reg" style="font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px;display:block">Régime</label><select id="tl-reg" class="finp" style="width:100%;background:var(--bg-2);border:1px solid var(--brd-l);border-radius:var(--r-m);padding:12px;color:var(--t1)"><option value="dc">Droit commun</option><option value="co">Criminalité organisée</option></select></div>
+  <div class="field" style="margin-bottom:12px"><label for="tl-reg" style="font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px;display:block">Régime</label><select id="tl-reg" class="finp" style="width:100%;background:var(--bg-2);border:1px solid var(--brd-l);border-radius:var(--r-m);padding:12px;color:var(--t1)"><option value="dc">Droit commun (48h)</option><option value="co">Criminalité organisée (96h)</option><option value="terr">Terrorisme (144h)</option></select></div>
   <button class="btn-main" onclick="C.genTL()">Générer la timeline</button>
   <div id="tl-out" style="margin-top:16px"></div>
 </div>
@@ -909,6 +922,49 @@ body.app-shell{display:flex;flex-direction:column;min-height:100dvh}
   <div id="ca-r" style="display:none;margin-top:16px"></div>
 </div>
 </div>
+</div>
+
+<!-- EXAMEN BLANC CHRONOMÉTRÉ (page pleine) -->
+<div class="page" id="p-examen-blanc">
+  <div class="app-hdr eb-app-hdr">
+    <button type="button" class="btn btn-ghost btn-sm eb-hdr-close" id="eb-close-btn" aria-label="Quitter l'examen blanc">✕</button>
+    <h2 class="app-hdr__title">Examen blanc</h2>
+    <span id="eb-timer" class="eb-timer">45:00</span>
+  </div>
+  <div class="scroll-area">
+    <div class="content">
+      <div class="eb-progress-bar">
+        <div class="eb-progress-fill" id="eb-progress-fill"></div>
+      </div>
+      <p class="eb-counter" id="eb-counter">Question 1 / 28</p>
+      <div class="eb-question-card" id="eb-question-card">
+        <p class="eb-theme" id="eb-theme"></p>
+        <p class="eb-question-text" id="eb-question-text"></p>
+      </div>
+      <div id="eb-answer-section" style="display:none">
+        <div class="eb-answer-card" id="eb-answer-card"></div>
+        <div class="eb-eval-btns">
+          <button type="button" class="btn-sec eb-btn-wrong" id="eb-btn-wrong">✗ Incorrect</button>
+          <button type="button" class="btn-primary eb-btn-correct" id="eb-btn-correct">✓ Correct</button>
+        </div>
+      </div>
+      <div id="eb-reveal-section">
+        <button type="button" class="btn-primary eb-btn-reveal" id="eb-btn-reveal">Voir la réponse</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- RÉVISION JOUR J -->
+<div class="page" id="p-jour-j">
+  <div class="app-hdr jj-app-hdr">
+    <button type="button" class="btn btn-ghost btn-sm jj-hdr-close" id="jj-close-btn" aria-label="Quitter">✕</button>
+    <h2 class="app-hdr__title jj-hdr-title">Révision Jour J</h2>
+    <span class="jj-phase-label" id="jj-phase-label"></span>
+  </div>
+  <div class="scroll-area">
+    <div class="content" id="jj-content"></div>
+  </div>
 </div>
 
 <!-- PROFIL -->
@@ -973,7 +1029,7 @@ body.app-shell{display:flex;flex-direction:column;min-height:100dvh}
     <div class="pstat-l">QCM vus</div>
   </div>
   <div class="pstat">
-    <div class="pstat-v" style="color:var(--warn)" id="pr-streak-v">0🔥</div>
+    <div class="pstat-v" style="color:var(--warn)" id="pr-streak-v">0</div>
     <div class="pstat-l">Streak record</div>
   </div>
 </div>
@@ -984,6 +1040,19 @@ body.app-shell{display:flex;flex-direction:column;min-height:100dvh}
 <div class="profil-section">
   <div id="pr-readiness"></div>
 </div>
+<div class="profil-section" id="pr-module-lacunes-wrap">
+  <h4 class="sec-hd-sm">Lacunes orales par thème</h4>
+  <p class="module-stat-hint">Pourcentage = maîtrise moyenne des questions déjà traitées dans chaque thème (sinon 0&nbsp;%).</p>
+  <div id="pr-module-lacunes"></div>
+</div>
+<div class="profil-section" id="pr-exam-history-wrap">
+  <h4 class="sec-hd-sm">Examens blancs</h4>
+  <div id="pr-exam-history"></div>
+</div>
+<section class="pr-section" id="pr-revision-plan">
+  <h3 class="pr-section-title">Plan de révision</h3>
+  <div id="pr-plan-content"></div>
+</section>
 <div class="slbl">Radar compétences</div>
 <div style="display:flex;justify-content:center;margin-bottom:12px"><div id="pr-radar"></div></div>
 <div class="slbl">Badges</div>
@@ -996,7 +1065,7 @@ body.app-shell{display:flex;flex-direction:column;min-height:100dvh}
   <div class="pmenu-item" role="button" tabindex="0" onclick="THEME28&&THEME28.toggle()"><div class="pmenu-ico">&#x1F319;</div><div class="pmenu-lbl" id="theme-label">Mode clair</div><div class="pmenu-arr">></div></div>
   <div class="pmenu-item" role="button" tabindex="0" onclick="showAccountModal()"><div class="pmenu-ico">&#x1F464;</div><div class="pmenu-lbl">Mon compte</div><div class="pmenu-arr">></div></div>
   <div class="pmenu-item" id="btn-logout" style="display:none" role="button" tabindex="0" onclick="doLogout&&doLogout()"><div class="pmenu-ico">🚪</div><div class="pmenu-lbl" style="color:var(--err)">Déconnexion</div><div class="pmenu-arr">></div></div>
-  <div class="pmenu-item"><div class="pmenu-ico" style="font-size:11px">v60</div><div class="pmenu-lbl" style="color:var(--t2);font-size:12px">OPJ Elite · <span id="sync-status">Local</span></div></div>
+  <div class="pmenu-item"><div class="pmenu-ico"></div><div class="pmenu-lbl" style="color:var(--t2);font-size:12px">OPJ Elite · <span id="sync-status">Local</span><br><span id="app-version-display" class="version-label"></span></div></div>
 </div>
 </div>
 </div>
@@ -1078,6 +1147,8 @@ body.app-shell{display:flex;flex-direction:column;min-height:100dvh}
 <!-- Offline bar -->
 <div id="offline-bar" style="display:none;position:fixed;top:0;left:0;right:0;z-index:var(--z-critical);background:var(--warn);color:#000;font-size:11px;font-weight:700;text-align:center;padding:6px">📴 Hors ligne</div>
 
+<script src="./js/config.js"></script>
+<script src="./js/utils/sanitize.js"></script>
 <script src="./js/core/fsrs.js"></script>
 <script src="./js/core/audio.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
@@ -1087,6 +1158,8 @@ body.app-shell{display:flex;flex-direction:column;min-height:100dvh}
 <script src="./js/data/procedures.js"></script>
 <script src="./js/data/annales.js"></script>
 <script src="./js/data/printsheets.js"></script>
+<script src="./js/data/pv-cartouches-extra.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
 <script src="./js/app.js"></script>
 </body>
 </html>

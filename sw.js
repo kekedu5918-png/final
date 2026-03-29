@@ -1,10 +1,10 @@
 /* ═══════════════════════════════════════════════════════
-   OPJ ELITE — Service Worker v60
+   OPJ ELITE — Service Worker v77
    Chemins relatifs pour GitHub Pages (sous-dossier).
    Toutes les URLs sont résolues via self.registration.scope.
    ═══════════════════════════════════════════════════════ */
 
-const CACHE = 'opj-v60';
+const CACHE = 'opj-v77';
 
 const STATIC = [
   './',
@@ -16,6 +16,10 @@ const STATIC = [
   './css/tokens.css',
   './css/components.css',
   './css/pages.css',
+
+  /* JS — config & utilitaires */
+  './js/config.js',
+  './js/utils/sanitize.js',
 
   /* JS — core (chargés en premier) */
   './js/core/fsrs.js',
@@ -31,10 +35,12 @@ const STATIC = [
   './js/data/procedures.js',
   './js/data/annales.js',
   './js/data/printsheets.js',
+  './js/data/pv-cartouches-extra.js',
 
   /* Icons PWA */
   './icons/icon-192.svg',
-  './icons/icon-512.svg'
+  './icons/icon-512.svg',
+  './icons/screenshot-home.webp'
 ];
 
 /* ── Install : mise en cache des assets statiques ── */
