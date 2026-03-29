@@ -474,7 +474,7 @@ const ORAL_QB = [
   { id: 'oral_12', theme: 'FLAGRANCE', q: 'Peut-on procéder à une garde à vue en procédure de flagrance ?', points: ['Oui si conditions cumulatives de l\'art. 62-2 CPP sont réunies', 'Peine d\'emprisonnement encourue + raisons plausibles + nécessité des mesures', 'Formalités identiques (notification droits art. 63-1, avis PR…)'], articles: ['Art. 62-2 CPP', 'Art. 63 CPP'], niveau: 2, duree: 90 },
   { id: 'oral_13', theme: 'FLAGRANCE', q: 'Qu\'est-ce que la « quasi-flagrance » ou infractions assimilées à la flagrance ?', points: ['Certaines hypothèses légales d\'équivalence', 'Intérêt pour pouvoir d\'intervention immédiat', 'Ne pas confondre avec simple soupçon'], articles: ['Art. 53 al. 4 CPP'], niveau: 3, duree: 120 },
   { id: 'oral_14', theme: 'FLAGRANCE', q: 'Que faire si la flagrance cesse avant la fin des actes ?', points: ['Adapter la procédure (EP, réquisitions)', 'Rechercher une autre base légale pour les actes', 'Conséquences sur la validité des perquisitions'], articles: ['Art. 76 CPP', 'Art. 56 CPP'], niveau: 3, duree: 150 },
-  { id: 'oral_15', theme: 'PERQUIZ', q: 'Quelles sont les conditions générales de validité d\'une perquisition au domicile ?', points: ['Consentement du résident ou décision judiciaire selon cas', '6h–21h en droit commun (art. 59 CPP) sauf flagrance / CR / exceptions', 'Présence des garanties procédurales (PV, inventaire, art. 57 CPP si besoin)', 'Sans assentiment possible si délit ≥ 3 ans : autorisation écrite et motivée du JLD (Art. 76 al.4 CPP)'], articles: ['Art. 56 CPP', 'Art. 59 CPP', 'Art. 76 al.4 CPP'], niveau: 1, duree: 120 },
+  { id: 'oral_15', theme: 'PERQUIZ', q: 'Quelles sont les conditions générales de validité d\'une perquisition au domicile ?', points: ['Consentement du résident ou décision judiciaire selon cas', '6h–21h en droit commun (art. 59 CPP) sauf flagrance / CR / exceptions', 'Présence des garanties procédurales (PV, inventaire, art. 57 CPP si besoin)', 'Sans assentiment en préliminaire : crime ou délit puni d\'au moins 5 ans d\'emprisonnement — autorisation écrite et motivée du JLD (Art. 76 al.4 CPP)'], articles: ['Art. 56 CPP', 'Art. 59 CPP', 'Art. 76 al.4 CPP'], niveau: 1, duree: 120 },
   { id: 'oral_16', theme: 'PERQUIZ', q: 'Perquisition au lieu professionnel : particularités ?', points: ['Protection du secret professionnel (avocat, médecin…)', 'Mesures d\'interface avec le juge', 'Modalités d\'accès aux données'], articles: ['Art. 56 CPP', 'Art. 56-1 CPP'], niveau: 2, duree: 120 },
   { id: 'oral_17', theme: 'PERQUIZ', q: 'Perquisition informatique : cadre et garanties ?', points: ['Saisie de données sous contrôle judiciaire selon hypothèses', 'Clonage, mots de passe, périmètre de fouille', 'Respect du secret des correspondances'], articles: ['Art. 706-95 et s. CPP'], niveau: 2, duree: 150 },
   { id: 'oral_18', theme: 'PERQUIZ', q: 'Différence entre perquisition et visite domiciliaire ?', points: ['Finalités et objets distincts', 'Régimes juridiques différents', 'Qui autorise et sous quelles conditions'], articles: ['Art. 76 CPP', 'Art. 59 CPP'], niveau: 2, duree: 120 },
@@ -559,7 +559,7 @@ const ORAL_QB = [
   { id: 'oral_m01_02', theme: 'INSTRUCTION', q: 'Quelles décisions le procureur de la République peut-il prendre à l\'issue de l\'enquête (grandes voies) ?', points: ['Classer sans suite (art. 40-1 CPP) si les infractions ne sont pas suffisamment caractérisées ou si les poursuites sont inopportunes', 'Engager des poursuites (citations, renvois, réquisitions devant le juge d\'instruction ou le tribunal selon les cas)', 'Proposer ou ordonner des mesures alternatives aux poursuites (art. 41-1 CPP : rappel à la loi, médiation, etc. ; art. 41-2 composition pénale sous conditions)', 'Le PR dirige l\'enquête préliminaire et l\'enquête de flagrance sur le plan juridique'], articles: ['Art. 40 CPP', 'Art. 40-1 CPP', 'Art. 41-1 CPP', 'Art. 41-2 CPP'], niveau: 2, duree: 120 },
   { id: 'oral_m01_03', theme: 'NULLITES', q: 'Comment distinguer nullités « automatiques », nullités « substantielles » et nullités d\'intérêt privé ?', points: ['Nullité « textuelle » (art. 171 CPP) : sanction attachée par la loi à l\'inobservation d\'une formalité — nullité sans preuve de grief dans les cas visés', 'Nullité « substantielle » (art. 802 CPP) : irrégularité susceptible d\'avoir porté atteinte aux intérêts de la partie : grief à établir', 'Nullités d\'intérêt privé : certaines irrégularités ne peuvent être invoquées que par la personne concernée (prévenu, partie civile) et non par le ministère public — à ne pas confondre avec l\'ordre public procédural', 'Art. 803 et suivants CPP : cadre des conclusions en nullité devant la cour d\'assises (nullités invoquées par les parties)'], articles: ['Art. 171 CPP', 'Art. 802 CPP', 'Art. 803 CPP'], niveau: 2, duree: 120 },
   { id: 'oral_m01_04', theme: 'QUALIF', q: 'Quels sont les délais ordinaires de prescription de l\'action publique pour crime, délit et contravention ?', points: ['Crimes : prescription vingt ans (art. 133-1 CP) — nuances pour crimes contre l\'humanité et certaines infractions spéciales', 'Délit : prescription six ans (art. 133-2 CP) sauf dispositions spéciales plus courtes ou plus longues', 'Contravention : prescription trois ans (art. 133-3 CP)', 'Point d\'articulation avec l\'interruption et la suspension (art. 133-4 à 133-6 CP)'], articles: ['Art. 133-1 CP', 'Art. 133-2 CP', 'Art. 133-3 CP'], niveau: 2, duree: 120 },
-  { id: 'oral_m01_05', theme: 'QUALIF', q: 'Qu\'est-ce que la tentative et la complicité en droit pénal ?', points: ['Tentative (art. 121-4 CP) : commencement d\'exécution manqué pour cause indépendante de la volonté — peines réduites sauf cas où la tentative est punie au même titre que l\'infraction consommée', 'Complicité (art. 121-7 CP) : aide ou assistance à l\'infraction ; fourniture moyens, provocation, intelligence selon les cas', 'Distinction instigateur / complice / coauteur selon le rôle dans les faits', 'Complicité de contravention : conditions restrictives (art. 121-7 al. 3 CP)'], articles: ['Art. 121-4 CP', 'Art. 121-7 CP'], niveau: 2, duree: 120 },
+  { id: 'oral_m01_05', theme: 'QUALIF', q: 'Qu\'est-ce que la tentative et la complicité en droit pénal ?', points: ['Tentative — définition (art. 121-5 CP) : commencement d\'exécution + absence de désistement volontaire (causes indépendantes de la volonté) ; punissabilité (art. 121-4 CP) : peines réduites sauf cas où la tentative est punie comme l\'infraction consommée', 'Complicité (art. 121-7 CP) : aide ou assistance à l\'infraction ; fourniture moyens, provocation, intelligence selon les cas', 'Distinction instigateur / complice / coauteur selon le rôle dans les faits', 'Complicité de contravention : conditions restrictives (art. 121-7 al. 3 CP)'], articles: ['Art. 121-5 CP (définition), Art. 121-4 CP (punissabilité)', 'Art. 121-7 CP'], niveau: 2, duree: 120 },
 
   { id: 'oral_m02_01', theme: 'FLAGRANCE', q: 'Comment l\'article 18 CPP organise-t-il les déplacements des OPJ hors de leur ressort territorial (extension de compétence) ?', points: ['Al. 1 : compétence dans les limites territoriales où l\'OPJ exerce habituellement ses fonctions', 'Al. 2 : OPJ temporairement mis à disposition d\'un autre service = même compétence territoriale que les OPJ du service d\'accueil', 'Al. 3 : transport sur **tout le territoire national** pour enquêter (auditions, perquisitions, saisies) après information du **procureur saisi de l\'enquête** ou du **juge d\'instruction** ; assistance d\'un OPJ territorialement compétent si le magistrat le décide ; information du procureur du TJ du lieu des actes', 'Cas **limitrophe** : **aucune information préalable** requise si le déplacement reste dans un ressort limitrophe au sien — **Paris** et **Hauts-de-Seine, Seine-Saint-Denis, Val-de-Marne** assimilés à un seul département (fin al. 3)', 'À relier à l\'information du procureur en flagrance (art. 53 CPP)'], articles: ['Art. 18 CPP', 'Art. 53 CPP'], niveau: 2, duree: 120 },
   { id: 'oral_m02_02', theme: 'FLAGRANCE', q: 'Quelle est la durée maximale de l\'enquête de flagrance et comment la prolonge-t-on ?', points: ['Durée initiale : huit jours sans discontinu à compter de la constatation de la flagrance (art. 53 CPP)', 'Prolongation : huit jours supplémentaires possibles par décision écrite du procureur si enquêtes nécessaires à la manifestation de la vérité pour crime ou délit puni d\'au moins cinq ans d\'emprisonnement ne peuvent être différées (art. 53 CPP)', 'Au-delà : les actes relèvent des règles de l\'enquête préliminaire sous peine de nullité', 'Ne pas confondre avec la seule durée de la garde à vue (régime des art. 63 et s. CPP)'], articles: ['Art. 53 CPP'], niveau: 2, duree: 120 },
@@ -628,7 +628,11 @@ function defaultState(){
     pvDone:0,
     milestones:{},
     placementDone:false,placementScore:{},
-    errorLog:{}
+    errorLog:{},
+    // Missions quotidiennes v2 — objet rempli par ensureDailyMissions2 (date, active, prog)
+    missions2:{},
+    proExpiry:null,
+    stripeCustId:null
   };
 }
 let S=defaultState();
@@ -665,6 +669,9 @@ function loadState(){
         if(prev.earlyBirdCount!==undefined)S.earlyBirdCount=prev.earlyBirdCount;
         if(prev.pvDone!==undefined)S.pvDone=prev.pvDone;
         S.isPro=prev.isPro||prev.user?.isPRO||false;
+        if(!S.missions2)S.missions2={};
+        if(S.proExpiry===undefined)S.proExpiry=prev.proExpiry??null;
+        if(S.stripeCustId===undefined)S.stripeCustId=prev.stripeCustId??null;
         S.page='home';save();loaded=true;
       } else {
         S={...defaultState(),...s,page:'home'};
@@ -683,6 +690,9 @@ function loadState(){
         if(!S.examHistory)S.examHistory=[];
         if(S.earlyBirdCount===undefined)S.earlyBirdCount=0;
         if(S.pvDone===undefined)S.pvDone=0;
+        if(!S.missions2)S.missions2={};
+        if(S.proExpiry===undefined)S.proExpiry=null;
+        if(S.stripeCustId===undefined)S.stripeCustId=null;
         loaded=true;
       }
     }
@@ -716,6 +726,9 @@ function loadState(){
         else S.examHistory=[];
         if(d.earlyBirdCount!==undefined)S.earlyBirdCount=d.earlyBirdCount;
         if(d.pvDone!==undefined)S.pvDone=d.pvDone;
+        if(!S.missions2)S.missions2={};
+        if(S.proExpiry===undefined)S.proExpiry=d.proExpiry??null;
+        if(S.stripeCustId===undefined)S.stripeCustId=d.stripeCustId??null;
         S.isPro=d.isPro||d.user?.isPRO||false;
         S.page='home';
         save();
@@ -1335,12 +1348,12 @@ function renderExamenBlancResultats(entry,reason){
           ${bonAff} / ${entry.nbQuestions} correctes
           — ${dureeMin}min ${String(dureeS).padStart(2,'0')}s
         </p>
-        <table class="eb-modules-table">
+        <div class="table-scroll"><table class="eb-modules-table">
           <thead><tr>
             <th>Module</th><th>Score</th><th></th>
           </tr></thead>
           <tbody>${modulesRows}</tbody>
-        </table>
+        </table></div>
         <div class="eb-result-btns">
           <button type="button" class="btn-sec" id="eb-btn-retry-errors">
             Revoir mes erreurs
@@ -1998,6 +2011,7 @@ function openLesson(id){
   (lesson.secs||[]).forEach(s=>{
     html+=`<div class="lesson-sec-title">${eh(s.t)}</div>`;
     if(s.table){
+      /* Table leçon : wrapper overflow déjà présent — pas de .table-scroll redondant (correction audit) */
       html+=`<div style="overflow-x:auto;margin-bottom:7px"><table class="art-table"><thead><tr>${s.table.th.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${s.table.rows.map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
     }else{
       (s.items||[]).forEach(it=>html+=`<div class="lesson-block">${it}</div>`);
@@ -2355,10 +2369,10 @@ function oralRenderExamBlancResults(data){
   <div style="margin-top:12px;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--t3)">Durée réelle : ${dmm}:${dss}</div>
   ${data.timedOut?'<div style="color:var(--warn);font-size:12px;margin-top:10px">Temps imparti écoulé — fin automatique.</div>':''}
 </div>
-<table class="exam-blanc-mod-table" aria-label="Scores par module">
+<div class="table-scroll"><table class="exam-blanc-mod-table" aria-label="Scores par module">
   <thead><tr><th>Module</th><th>Score</th><th></th></tr></thead>
   <tbody>${rows||'<tr><td colspan="3" style="color:var(--t3);text-align:center">Aucune question complétée</td></tr>'}</tbody>
-</table>
+</table></div>
 <div style="display:flex;flex-direction:column;gap:10px;max-width:440px;margin:20px auto 0;width:100%">
   <button type="button" class="btn-main" onclick="startExamBlancErrorReview()">Revoir mes erreurs</button>
   <button type="button" class="btn-ghost" onclick="closeExamBlancResults()">Fermer</button>
@@ -3853,10 +3867,11 @@ const EVAL={answers:{},show(){this.answers={};document.getElementById('eval-resu
 /* DOMContentLoaded vestige supprimé v30 */
 
 /* ═══ C — CARTOUCHES ═══ */
+/* Art. 64 CPP : mentions matérielles du PV ; droits du gardé = art. 63-1 (champ séparé explicite dans les rubriques). */
 const CT={
   gav:{
     ti:'PV de Garde à Vue',
-    st:'Mentions obligatoires — Art. 64 CPP',
+    st:'Mentions du procès-verbal (Art. 64 CPP) — droits notifiés (Art. 63-1 CPP)',
     fs:[
       {id:'ct-gav-identite',l:'Identité complète du gardé à vue',t:'text',h:'Nom, prénom, date/lieu de naissance, domicile',r:true},
       {id:'ct-gav-infraction',l:'Nature et date de l\'infraction',t:'text',h:'Qualification pénale + article',r:true},
@@ -4040,47 +4055,47 @@ const PRINT_SHEETS=[
 const PRINT_CONTENT={
 ps1:`<h1>📊 Classification tripartite & Tentative</h1>
 <h2>Tripartition des infractions (Art. 111-1 CP)</h2>
-<table><tr><th>Nature</th><th>Peine</th><th>Juridiction</th><th>Prescription AP</th></tr>
+<div class="table-scroll"><table><tr><th>Nature</th><th>Peine</th><th>Juridiction</th><th>Prescription AP</th></tr>
 <tr><td>CRIME</td><td>Réclusion criminelle / Perpétuité</td><td>Cour d'Assises</td><td>20 ans</td></tr>
 <tr><td>DÉLIT</td><td>Emprisonnement + amende</td><td>Tribunal Correctionnel</td><td>6 ans</td></tr>
-<tr><td>CONTRAVENTION</td><td>Amende ≤ 1 500 €</td><td>Tribunal de Police</td><td>1 an</td></tr></table>
+<tr><td>CONTRAVENTION</td><td>Amende ≤ 1 500 €</td><td>Tribunal de Police</td><td>1 an</td></tr></table></div>
 <h2>Tentative (Art. 121-5 CP)</h2>
 <p>Conditions : <strong>commencement d'exécution</strong> + <strong>désistement involontaire</strong></p>
 <p>Crime → toujours punissable. Délit → si texte exprès. Contravention → JAMAIS.</p>
 <div class="piege-box">⚠️ Piège : La tentative de contravention N'EST PAS punissable. La tentative d'un délit doit être expressément prévue par le texte.</div>
 <h2>Récidive légale (Art. 132-8 CP)</h2>
-<table><tr><th>Type</th><th>Délai</th><th>Effet</th></tr>
+<div class="table-scroll"><table><tr><th>Type</th><th>Délai</th><th>Effet</th></tr>
 <tr><td>Crime / Crime</td><td>Perpétuel</td><td>Doublement de la peine max</td></tr>
 <tr><td>Délit / Délit assimilé</td><td>5 ans</td><td>Doublement de la peine max</td></tr>
-<tr><td>Contravention 5e classe</td><td>1 an</td><td>Alourdissement</td></tr></table>`,
+<tr><td>Contravention 5e classe</td><td>1 an</td><td>Alourdissement</td></tr></table></div>`,
 
 ps2:`<h1>🔒 GAV — Tous régimes</h1>
-<table><tr><th>Régime</th><th>Initiale</th><th>Max total</th><th>Prolongation</th></tr>
+<div class="table-scroll"><table><tr><th>Régime</th><th>Initiale</th><th>Max total</th><th>Prolongation</th></tr>
 <tr><td>Droit commun (art. 63)</td><td>24h</td><td>48h</td><td>PR — écrit + motivé</td></tr>
 <tr><td>Criminalité organisée (706-88)</td><td>24h</td><td>96h</td><td>PR puis JLD (>48h)</td></tr>
 <tr><td>Terrorisme (706-88-1)</td><td>24h</td><td>144h</td><td>PR puis JLD (>48h)</td></tr>
-<tr><td>Mineur 13-16 ans</td><td>24h</td><td>48h max</td><td>PR (ou JLD si CO)</td></tr></table>
+<tr><td>Mineur 13-16 ans</td><td>24h</td><td>48h max</td><td>PR (ou JLD si CO)</td></tr></table></div>
 <h2>Droits notifiés IMMÉDIATEMENT (Art. 63-1 CPP)</h2>
 <p>Droit au silence · Avocat SANS délai (loi 22/04/2024) · Examen médical · Aviser un proche · Interprète</p>
 <div class="piege-box">⚠️ Pièges : (1) Heure de GAV = heure d'APPRÉHENSION, pas d'arrivée au commissariat. (2) Délai de carence avocat SUPPRIMÉ depuis le 22/04/2024. (3) Avis PR = IMMÉDIAT. (4) Mineur <16 ans : examen médical OBLIGATOIRE ET IMMÉDIAT.</div>`,
 
 ps3:`<h1>🔍 Cadres d'enquête & Perquisitions</h1>
 <h2>Les 5 cadres d'enquête</h2>
-<table><tr><th>Cadre</th><th>Article</th><th>Durée</th><th>Pouvoirs</th></tr>
+<div class="table-scroll"><table><tr><th>Cadre</th><th>Article</th><th>Durée</th><th>Pouvoirs</th></tr>
 <tr><td>Flagrance</td><td>Art. 53 CPP</td><td>8j + 8j (JLD)</td><td>Contrainte immédiate</td></tr>
 <tr><td>Préliminaire</td><td>Art. 75 CPP</td><td>2 ans + 1 an</td><td>Consentement ou JLD</td></tr>
 <tr><td>Commission rogatoire</td><td>Art. 151 CPP</td><td>Limitée par CR</td><td>Identiques à flagrance</td></tr>
 <tr><td>Art. 74 (mort suspecte)</td><td>Art. 74 CPP</td><td>—</td><td>Avant qualification pénale</td></tr>
-<tr><td>Art. 74-1 (disparition)</td><td>Art. 74-1 CPP</td><td>—</td><td>3 critères cumulatifs</td></tr></table>
+<tr><td>Art. 74-1 (disparition)</td><td>Art. 74-1 CPP</td><td>—</td><td>3 critères cumulatifs</td></tr></table></div>
 <h2>Règles de perquisition</h2>
-<table><tr><th>Cadre</th><th>Accord requis</th><th>Horaires</th><th>Particularités</th></tr>
+<div class="table-scroll"><table><tr><th>Cadre</th><th>Accord requis</th><th>Horaires</th><th>Particularités</th></tr>
 <tr><td>Flagrance</td><td>NON</td><td>24h/24</td><td>Art. 56 CPP</td></tr>
 <tr><td>Préliminaire</td><td>OUI (écrit) ou JLD</td><td>6h–21h</td><td>Art. 76 CPP</td></tr>
-<tr><td>CR</td><td>NON</td><td>24h/24</td><td>Art. 94-96 CPP</td></tr></table>
+<tr><td>CR</td><td>NON</td><td>24h/24</td><td>Art. 94-96 CPP</td></tr></table></div>
 <p><strong>Lieux protégés :</strong> Avocat → bâtonnier OBLIGATOIRE | Médecin → président ordre | Presse → magistrat</p>`,
 
 ps4:`<h1>⚖️ Infractions principales — Méthode LAME</h1>
-<table><tr><th>Infraction</th><th>Article</th><th>Qual.</th><th>Peine de base</th><th>Élément moral</th></tr>
+<div class="table-scroll"><table><tr><th>Infraction</th><th>Article</th><th>Qual.</th><th>Peine de base</th><th>Élément moral</th></tr>
 <tr><td>MEURTRE</td><td>221-1 CP</td><td>Crime</td><td>30 ans RC</td><td>Intention de tuer (animus necandi)</td></tr>
 <tr><td>ASSASSINAT</td><td>221-3 CP</td><td>Crime</td><td>Perpétuité</td><td>Préméditation + intention de tuer</td></tr>
 <tr><td>VIOL</td><td>222-23 CP</td><td>Crime</td><td>15 ans RC</td><td>Intentionnel, sans consentement</td></tr>
@@ -4090,26 +4105,26 @@ ps4:`<h1>⚖️ Infractions principales — Méthode LAME</h1>
 <tr><td>ABUS DE CONFIANCE</td><td>314-1 CP</td><td>Délit</td><td>3 ans / 375k€</td><td>Remise préalable licite + détournement</td></tr>
 <tr><td>RECEL</td><td>321-1 CP</td><td>Délit</td><td>5 ans / 375k€</td><td>Connaissance origine frauduleuse</td></tr>
 <tr><td>USAGE STUPS</td><td>L3421-1 CSP</td><td>Délit</td><td>1 an / 3 750€</td><td>Intentionnel</td></tr>
-<tr><td>BLANCHIMENT</td><td>324-1 CP</td><td>Délit</td><td>5 ans / 375k€</td><td>Connaissance origine criminelle</td></tr></table>`,
+<tr><td>BLANCHIMENT</td><td>324-1 CP</td><td>Délit</td><td>5 ans / 375k€</td><td>Connaissance origine criminelle</td></tr></table></div>`,
 
 ps5:`<h1>⛓️ Mandats, CJ, ARSE, Détention Provisoire</h1>
 <h2>Les 4 mandats + mandat de recherche</h2>
-<table><tr><th>Mandat</th><th>Article</th><th>Auteur</th><th>Effet</th></tr>
+<div class="table-scroll"><table><tr><th>Mandat</th><th>Article</th><th>Auteur</th><th>Effet</th></tr>
 <tr><td>Comparution</td><td>122 al.1 CPP</td><td>JI</td><td>Se présenter volontairement</td></tr>
 <tr><td>Amener</td><td>122 al.2 CPP</td><td>JI</td><td>Conduire de force — pas d'incarcération</td></tr>
 <tr><td>Dépôt</td><td>122 al.3 CPP</td><td>JI</td><td>Incarcération immédiate</td></tr>
 <tr><td>Arrêt</td><td>131 CPP</td><td>JI</td><td>Fugitifs/étranger — arrestation + prison</td></tr>
-<tr><td>Recherche</td><td>122-4 CPP</td><td>PR</td><td>Interpellation — délits ≥3 ans — 1 an renouv.</td></tr></table>
+<tr><td>Recherche</td><td>122-4 CPP</td><td>PR</td><td>Interpellation — délits ≥3 ans — 1 an renouv.</td></tr></table></div>
 <h2>Tableau comparatif CJ / ARSE / DP</h2>
-<table><tr><th>Mesure</th><th>Article</th><th>Seuil peine</th><th>Décideur</th><th>Durée</th></tr>
+<div class="table-scroll"><table><tr><th>Mesure</th><th>Article</th><th>Seuil peine</th><th>Décideur</th><th>Durée</th></tr>
 <tr><td>Contrôle Judiciaire</td><td>138 CPP</td><td>Tout emprisonnement</td><td>JLD</td><td>Sans limite légale</td></tr>
 <tr><td>ARSE</td><td>142-5 CPP</td><td>≥ 2 ans</td><td>JLD</td><td>Même régime DP</td></tr>
-<tr><td>Détention Provisoire</td><td>143-1 CPP</td><td>≥ 3 ans</td><td>JLD</td><td>4 mois → 2 ans max (correctionnel)</td></tr></table>
+<tr><td>Détention Provisoire</td><td>143-1 CPP</td><td>≥ 3 ans</td><td>JLD</td><td>4 mois → 2 ans max (correctionnel)</td></tr></table></div>
 <div class="piege-box">⚠️ Piège fondamental : Le JI seul NE PEUT JAMAIS décider la DP. C'est TOUJOURS le JLD, saisi par ordonnance du JI avec réquisitions du PR.</div>`,
 pv1:`<h1>📝 Canevas PV — Plainte &amp; Témoignage</h1>
 <h2>SAISINE — PLAINTE (Art. 53 et s. CPP · Art. 10-2 CPP)</h2>
 <div class="cartouche"><div class="cartouche-title">Structure du cartouche plainte</div>
-<table>
+<div class="table-scroll"><table>
 <tr><th>Rubrique</th><th>Contenu obligatoire</th></tr>
 <tr><td><strong>En-tête</strong></td><td>Étant au service — date, heure, lieu de rédaction</td></tr>
 <tr><td><strong>Saisine</strong></td><td>Constatons que se présente NOM Prénom victime du fait de [infraction]</td></tr>
@@ -4120,18 +4135,18 @@ pv1:`<h1>📝 Canevas PV — Plainte &amp; Témoignage</h1>
 <tr><td><strong>Avis Parquet</strong></td><td>Avisons immédiatement M. le Procureur de la République (Art. 40 CPP)</td></tr>
 <tr><td><strong>Clôture</strong></td><td>Plainte contre X ou personne dénommée — Récépissé remis de droit</td></tr>
 <tr><td><strong>Signature</strong></td><td>Après lecture, NOM Prénom signe avec nous le présent PV</td></tr>
-</table></div>
+</table></div></div>
 <h2>SAISINE — TÉMOIGNAGE (Art. 53 et s. CPP)</h2>
-<table>
+<div class="table-scroll"><table>
 <tr><th>Élément</th><th>Formule type</th></tr>
 <tr><td>Saisine</td><td>Sommes requis par [identité] qui déclare avoir été témoin de [fait]</td></tr>
 <tr><td>Cadre</td><td>Agissant en flagrant délit — Vu les articles 53 et s. CPP</td></tr>
 <tr><td>Identité</td><td>L'invitons à nous décliner son identité : NOM Prénom, DOB, adresse</td></tr>
 <tr><td>Q/R</td><td>QUESTION : … / RÉPONSE : … (autant que nécessaire)</td></tr>
 <tr><td>Signature</td><td>Après lecture, signe avec nous le présent PV</td></tr>
-</table>
+</table></div>
 <h2>SAISINE — TRANSPORT / CONSTATATIONS</h2>
-<table>
+<div class="table-scroll"><table>
 <tr><th>Étape</th><th>Formule type</th></tr>
 <tr><td>Départ</td><td>Étant au service — Sommes requis par [mode saisine] du fait de [infraction]</td></tr>
 <tr><td>SDPTS</td><td>Sollicitons le SDPTS aux fins de relevé de traces ou indices</td></tr>
@@ -4139,12 +4154,12 @@ pv1:`<h1>📝 Canevas PV — Plainte &amp; Témoignage</h1>
 <tr><td>Constatations</td><td><strong>En présence constante et effective du SDPTS</strong> — constatons extérieur, progression, éléments</td></tr>
 <tr><td>Résultat PTS</td><td>Le SDPTS indique n'avoir relevé aucune trace / ou description des traces</td></tr>
 <tr><td>Clôture</td><td>Dont PV que nos assistants signent avec nous</td></tr>
-</table>
+</table></div>
 <div class="ok"><strong>✓ Avis Parquet obligatoire :</strong> Art. 40 CPP — dès la constatation d'un crime ou délit. Le récépissé est de droit à la demande de la victime (Art. 10-2 CPP).</div>
 <div class="piege"><strong>⚠️ Pièges :</strong> Toujours mentionner la <u>présence constante et effective</u> du SDPTS. L'heure de GAV = heure d'appréhension, jamais l'heure d'arrivée au service.</div>`,
 pv2:`<h1>🚔 Canevas PV — Interpellation &amp; Garde à Vue</h1>
 <h2>INTERPELLATION (Art. 53 et s. CPP · Art. 803 CPP)</h2>
-<table>
+<div class="table-scroll"><table>
 <tr><th>Étape</th><th>Formule obligatoire</th><th>Article</th></tr>
 <tr><td>Constat</td><td>Constatons [fait + signalement] — Agissant en flagrant délit</td><td>Art. 53 CPP</td></tr>
 <tr><td>Interpellation</td><td>Interpellons l'individu à [heure] au [lieu]</td><td>Art. 53 CPP</td></tr>
@@ -4153,7 +4168,7 @@ pv2:`<h1>🚔 Canevas PV — Interpellation &amp; Garde à Vue</h1>
 <tr><td>Identité</td><td>L'invitons à nous décliner son identité : il nous déclare se nommer…</td><td>—</td></tr>
 <tr><td>Notification verbale GAV</td><td>L'informons qu'il est placé en GAV à compter de [heure] d'interpellation pour [qualification]</td><td>Art. 63-1 CPP</td></tr>
 <tr><td>Droits verbaux</td><td>L'informons immédiatement de ses droits Art. 63-1 à 63-4-3 — PV séparé à suivre</td><td>Art. 63-1 à 63-4-3</td></tr>
-</table>
+</table></div>
 <h2>NOTIFICATION PLACEMENT EN GAV — MAJEUR (Art. 63-1 CPP)</h2>
 <div class="cartouche"><div class="cartouche-title">Éléments obligatoires du cartouche GAV</div>
 <ul>
@@ -4165,7 +4180,7 @@ pv2:`<h1>🚔 Canevas PV — Interpellation &amp; Garde à Vue</h1>
 <li>Remise du <strong>formulaire de déclaration des droits</strong></li>
 </ul></div>
 <h2>LES 6 OBJECTIFS DE LA GAV (Art. 62-2 CPP)</h2>
-<table>
+<div class="table-scroll"><table>
 <tr><th>N°</th><th>Objectif — La GAV doit être l'UNIQUE moyen de…</th></tr>
 <tr><td>1°</td><td>Permettre les investigations impliquant la présence/participation de la personne</td></tr>
 <tr><td>2°</td><td>Garantir la présentation devant le Procureur de la République</td></tr>
@@ -4173,9 +4188,9 @@ pv2:`<h1>🚔 Canevas PV — Interpellation &amp; Garde à Vue</h1>
 <tr><td>4°</td><td>Empêcher les pressions sur témoins, victimes, proches</td></tr>
 <tr><td>5°</td><td>Empêcher la concertation avec coauteurs ou complices</td></tr>
 <tr><td>6°</td><td>Garantir la mise en œuvre des mesures pour faire cesser le crime/délit</td></tr>
-</table>
+</table></div>
 <h2>DROITS EN GAV (Art. 63-1 à 63-4-3 CPP)</h2>
-<table>
+<div class="table-scroll"><table>
 <tr><th>Droit</th><th>Article</th><th>Délai / Note</th></tr>
 <tr><td>Droit au silence</td><td>Art. 63-1</td><td>Immédiat — pas d'obligation de répondre</td></tr>
 <tr><td>Interprète gratuit</td><td>Art. 63-1</td><td>Immédiat si ne comprend pas le français</td></tr>
@@ -4184,20 +4199,20 @@ pv2:`<h1>🚔 Canevas PV — Interpellation &amp; Garde à Vue</h1>
 <tr><td>Médecin</td><td>Art. 63-3</td><td>À tout moment</td></tr>
 <tr><td>Consulter pièces</td><td>Art. 63-4-1</td><td>À tout moment</td></tr>
 <tr><td>Présenter observations</td><td>Art. 63-4-2</td><td>Au magistrat</td></tr>
-</table>
+</table></div>
 <h2>DURÉES DE GAV</h2>
-<table>
+<div class="table-scroll"><table>
 <tr><th>Profil</th><th>Initiale</th><th>Prolongation</th><th>CDO (Art. 706-88)</th></tr>
 <tr><td>Majeur droit commun</td><td>24H</td><td>+24H (accord Parquet)</td><td>+48H +48H</td></tr>
 <tr><td>Mineur 13-16 ans</td><td>24H</td><td>+24H séparé majeurs</td><td>Régime CJPM</td></tr>
 <tr><td>Mineur 16-18 ans</td><td>24H</td><td>+24H séparé majeurs</td><td>Régime CJPM</td></tr>
 <tr><td>Retenue 10-13 ans</td><td>12H</td><td>—</td><td>Infraction ≥ 5 ans emp.</td></tr>
-</table>
+</table></div>
 <div class="warn"><strong>⚡ Loi 22 avril 2024 :</strong> Délai de carence avocat <strong>supprimé</strong>. L'avocat intervient dès le début de la GAV.</div>
 <div class="piege"><strong>⚠️ Pièges :</strong> (1) Seul l'OPJ peut placer en GAV. (2) La GAV doit être l'<u>unique</u> moyen. (3) Heure GAV = heure interpellation, pas d'arrivée au service.</div>`,
 pv3:`<h1>🔍 Canevas PV — Perquisition &amp; Fouilles</h1>
 <h2>PERQUISITION — FLAGRANT DÉLIT (Art. 56 CPP)</h2>
-<table>
+<div class="table-scroll"><table>
 <tr><th>Étape</th><th>Formule type</th></tr>
 <tr><td>Transport</td><td>Muni des clés extraites de sa fouille — En compagnie du nommé, nous transportons à [adresse]</td></tr>
 <tr><td>Constat extérieur</td><td>Constatons qu'il s'agit de [description extérieure des lieux]</td></tr>
@@ -4209,35 +4224,35 @@ pv3:`<h1>🔍 Canevas PV — Perquisition &amp; Fouilles</h1>
 <tr><td>Fin</td><td>Perquisition terminée à [heure] sans incident — aucun autre élément</td></tr>
 <tr><td>Clôture</td><td>Refermons les lieux — Clés replaçons dans les effets du nommé</td></tr>
 <tr><td>Signature</td><td>Après lecture, le nommé signe avec nous et nos assistants ainsi que la fiche de scellé</td></tr>
-</table>
+</table></div>
 <div class="warn"><strong>⚠️ Heures légales :</strong> 6H – 21H en tout lieu. Sauf crime ou FD chez la personne interpellée = 24H/24.</div>
 <h2>PERQUISITION — ENQUÊTE PRÉLIMINAIRE (Art. 76 CPP)</h2>
 <div class="cartouche"><div class="cartouche-title">Différence clé avec FD</div>
 <ul>
 <li>Nécessite l'<strong>assentiment exprès et manuscrit</strong> de la personne</li>
-<li>En cas de refus ET peine ≥ 3 ans : requête Parquet → autorisation JLD (écrite et motivée)</li>
+<li>En cas de refus ET crime ou délit puni d'au moins 5 ans d'emprisonnement : requête Parquet → autorisation JLD (écrite et motivée) — Art. 76 al. 4 CPP</li>
 <li>Mêmes heures légales : 6H – 21H</li>
 </ul></div>
 <h2>FOUILLE INTÉGRALE (Art. 53 et s. CPP)</h2>
-<table>
+<div class="table-scroll"><table>
 <tr><th>Étape</th><th>Formule</th></tr>
 <tr><td>Nécessité</td><td>Susceptible de détenir [élément] non détectable par palpation</td></tr>
 <tr><td>Exécution</td><td>Procédons à fouille intégrale sur la personne de NOM Prénom</td></tr>
 <tr><td>Découverte</td><td>Dans [endroit], découvrons [élément] — description précise</td></tr>
 <tr><td>Saisie</td><td>Saisissons et plaçons sous scellé n° [numéro]</td></tr>
 <tr><td>Fin</td><td>Fouille terminée, ne nous permet de découvrir aucun autre élément</td></tr>
-</table>
+</table></div>
 <h2>FOUILLE VÉHICULE (Art. 53 et s. CPP)</h2>
-<table>
+<div class="table-scroll"><table>
 <tr><th>Étape</th><th>Formule</th></tr>
 <tr><td>Constat</td><td>Constatons présence du véhicule [marque, modèle, immat.], stationné</td></tr>
 <tr><td>Ouverture</td><td>À l'aide des clés : portières, capot, coffre</td></tr>
 <tr><td>Fouille</td><td><strong>En présence constante et effective</strong> du nommé — minutieuse fouille</td></tr>
 <tr><td>Saisie</td><td>Saisissons et plaçons sous scellé n° [numéro]</td></tr>
 <tr><td>Clôture</td><td>Refermons le véhicule — clés replacées dans effets du nommé</td></tr>
-</table>
+</table></div>
 <h2>MÉTHODE SDIACSS — Saisie Incidente</h2>
-<table>
+<div class="table-scroll"><table>
 <tr><th>Lettre</th><th>Action</th></tr>
 <tr><td><strong>S</strong> — Situation</td><td>Contexte de la découverte incidente</td></tr>
 <tr><td><strong>D</strong> — Description</td><td>Description précise de l'objet saisi</td></tr>
@@ -4246,7 +4261,7 @@ pv3:`<h1>🔍 Canevas PV — Perquisition &amp; Fouilles</h1>
 <tr><td><strong>C</strong> — Cadre juridique</td><td>FD ou procédure incidente</td></tr>
 <tr><td><strong>S</strong> — Saisie</td><td>Saisie formalisée dans le PV</td></tr>
 <tr><td><strong>S</strong> — Scellé</td><td>Constitution du scellé numéroté</td></tr>
-</table>
+</table></div>
 <div class="piege"><strong>⚠️ Saisie incidente :</strong> Objet rattaché infraction en FD = avis Parquet immédiat + ouverture nouvelle procédure + extension GAV aux nouveaux faits.</div>`,
 art1:`<h1>⏱️ Ligne du Temps — Enquête ALPHA (Flagrant Délit)</h1>
 <p><em>Scénario type : Vol dans local d'habitation — 10h30 — Flagrant Délit complet</em></p>
@@ -4276,63 +4291,63 @@ art1:`<h1>⏱️ Ligne du Temps — Enquête ALPHA (Flagrant Délit)</h1>
 lame:`<h1>⚖️ Méthode LAME — Fiche Mémo Infraction</h1>
 <p>La méthode <strong>LAME</strong> structure l'analyse de toute infraction en 4 éléments constitutifs obligatoires.</p>
 <h2>L — Élément Légal</h2>
-<table>
+<div class="table-scroll"><table>
 <tr><th>Composante</th><th>Contenu</th></tr>
 <tr><td>Article de définition</td><td>Article XX CP/CPP qui prévoit et définit l'infraction</td></tr>
 <tr><td>Article de répression</td><td>Article XX qui fixe la peine (emprisonnement + amende)</td></tr>
 <tr><td>Circonstances aggravantes</td><td>Articles des aggravations (effraction, récidive, bande organisée…)</td></tr>
 <tr><td>Classification (Art. 111-1 CP)</td><td>Crime / Délit / Contravention</td></tr>
-</table>
+</table></div>
 <h2>A — Élément Actuel / Matériel</h2>
-<table>
+<div class="table-scroll"><table>
 <tr><th>Aspect</th><th>Contenu</th></tr>
 <tr><td>Faits constatés</td><td>Tous éléments objectifs prouvant la matérialité de l'infraction</td></tr>
 <tr><td>Nature des actes</td><td>Unique ou pluralité — Instantané ou continu dans le temps</td></tr>
 <tr><td>Commission ou omission</td><td>Action active ou inaction contraire à l'ordre social</td></tr>
 <tr><td>Preuves matérielles</td><td>Scellés, témoignages, constatations, rapports PTS</td></tr>
-</table>
+</table></div>
 <h2>M — Élément Moral (Culpabilité)</h2>
-<table>
+<div class="table-scroll"><table>
 <tr><th>Type de faute</th><th>Définition</th><th>Exemples</th></tr>
 <tr><td><strong>Dol général</strong></td><td>Conscience + volonté d'accomplir l'acte</td><td>Vol, meurtre, coups</td></tr>
 <tr><td><strong>Intentionnelle</strong></td><td>Volonté dirigée vers le résultat précis</td><td>Homicide volontaire</td></tr>
 <tr><td><strong>Non-intentionnelle</strong></td><td>Imprudence, négligence, maladresse</td><td>Homicide par imprudence</td></tr>
 <tr><td><strong>Mise en danger délibérée</strong></td><td>Violation manifestement délibérée obligation sécurité</td><td>Art. 223-1 CP</td></tr>
 <tr><td><strong>Contraventionnelle</strong></td><td>Simple matérialité, sans intention requise</td><td>Infractions routières</td></tr>
-</table>
+</table></div>
 <p style="font-size:11px;font-style:italic">Formule type démontrant la conscience : « L'intéressé, en état de conscience pleine et entière, a volontairement… »</p>
 <h2>E — Énrôlement / Responsabilité Pénale</h2>
-<table>
+<div class="table-scroll"><table>
 <tr><th>Situation</th><th>Formule</th></tr>
 <tr><td>Responsabilité pleine</td><td>NOM Prénom engage sa responsabilité pénale pleine et entière</td></tr>
 <tr><td>Irresponsabilité</td><td>Ne peut donner lieu à poursuites — motif : trouble mental, contrainte, minorité</td></tr>
 <tr><td>Tentative (Art. 121-5)</td><td>Commencement exécution + absence désistement volontaire</td></tr>
 <tr><td>Complicité (Art. 121-7)</td><td>Fait principal punissable + participation + intention de participer</td></tr>
 <tr><td>Immunité familiale</td><td>Au préjudice ascendant/descendant/conjoint (hors documents indispensables)</td></tr>
-</table>
+</table></div>
 <h2>Tripartition des Infractions (Art. 111-1 CP)</h2>
-<table>
+<div class="table-scroll"><table>
 <tr><th>Nature</th><th>Peine max</th><th>Juridiction</th><th>Prescription AP</th><th>Prescription peine</th></tr>
 <tr><td><strong>CRIME</strong></td><td>Réclusion / Perpétuité</td><td>Cour d'Assises</td><td>20 ans</td><td>20 ans</td></tr>
 <tr><td><strong>DÉLIT</strong></td><td>Emprisonnement + amende</td><td>Tribunal Correctionnel</td><td>6 ans</td><td>6 ans</td></tr>
 <tr><td><strong>CONTRAVENTION</strong></td><td>Amende (R, C1 à C5)</td><td>Tribunal de Police</td><td>1 an</td><td>3 ans</td></tr>
-</table>
+</table></div>
 <div class="piege"><strong>⚠️ La classification détermine :</strong> Régime de GAV · Durée de prescription · Juridiction compétente · Quantum de peine. Une erreur de qualification peut faire tomber toute la procédure.</div>`,
 bloc1:`<h1>🏛️ Libertés Publiques &amp; Acteurs de la PJ</h1>
 <h2>Libertés Fondamentales</h2>
-<table>
+<div class="table-scroll"><table>
 <tr><th>Liberté</th><th>Définition</th><th>Base juridique</th></tr>
 <tr><td><strong>La Sûreté</strong></td><td>Droit de n'être ni arrêté ni détenu arbitrairement</td><td>DDHC 1789</td></tr>
 <tr><td><strong>Aller et venir</strong></td><td>Droit de se déplacer librement, pas d'arrestation hors cadre légal</td><td>Préambule Const. 1958</td></tr>
-</table>
+</table></div>
 <h2>Mesures de Privation de Liberté</h2>
-<table>
+<div class="table-scroll"><table>
 <tr><th>Mesure</th><th>Article</th><th>Durée max</th><th>Notes</th></tr>
 <tr><td>Garde à vue</td><td>Art. 62-2 CPP</td><td>24H + 24H (CDO +48H+48H)</td><td>Seul l'OPJ peut placer</td></tr>
 <tr><td>Contrôle d'identité</td><td>Art. 78-2 CPP</td><td>Temps nécessaire</td><td>OPJ, APJ, APJA</td></tr>
 <tr><td>Vérification d'identité</td><td>Art. 78-3 CPP</td><td>4H maximum</td><td>Sur décision OPJ</td></tr>
 <tr><td>Relevé d'identité</td><td>Art. 78-6 CPP</td><td>—</td><td>Contravention seulement</td></tr>
-</table>
+</table></div>
 <h2>Vérification d'Identité — Procédure (Art. 78-3 CPP)</h2>
 <div class="cartouche"><div class="cartouche-title">Procédure stricte</div>
 <ul>
@@ -4343,7 +4358,7 @@ bloc1:`<h1>🏛️ Libertés Publiques &amp; Acteurs de la PJ</h1>
 <li>Fin : destruction empreintes FAED dans les 6 mois</li>
 </ul></div>
 <h2>Les Acteurs de la Police Judiciaire (Art. 15 à 21 CPP)</h2>
-<table>
+<div class="table-scroll"><table>
 <tr><th>Acteur</th><th>Rôle principal</th></tr>
 <tr><td>Procureur de la République</td><td>Dirige et contrôle l'enquête de police judiciaire — Décide des poursuites</td></tr>
 <tr><td>OPJ</td><td>Direction effective des enquêtes — GAV — Perquisitions — Chef d'enquête</td></tr>
@@ -4351,25 +4366,25 @@ bloc1:`<h1>🏛️ Libertés Publiques &amp; Acteurs de la PJ</h1>
 <tr><td>APJA</td><td>Actes très limités — recueil identité, constatations simples</td></tr>
 <tr><td>Juge d'Instruction</td><td>Instruction judiciaire — Mandats — Commission rogatoire</td></tr>
 <tr><td>Maires et adjoints</td><td>OPJ de droit dans certaines matières</td></tr>
-</table>
+</table></div>
 <h2>Contrôle de la PJ</h2>
-<table>
+<div class="table-scroll"><table>
 <tr><th>Instance</th><th>Type de contrôle</th></tr>
 <tr><td>PG près la Cour d'Appel</td><td>Contrôle hiérarchique des OPJ du ressort</td></tr>
 <tr><td>Inspection Générale de la Justice</td><td>Contrôle disciplinaire</td></tr>
 <tr><td>Chambre de l'instruction</td><td>Contrôle juridictionnel des actes d'enquête (nullités)</td></tr>
-</table>
+</table></div>
 <h2>Suites Possibles à l'Enquête</h2>
-<table>
+<div class="table-scroll"><table>
 <tr><th>Décision du PR</th><th>Mode</th></tr>
 <tr><td>Engagement des poursuites</td><td>COPJ, CPPV, CRPC, CI (Comparution Immédiate)</td></tr>
 <tr><td>Alternative aux poursuites</td><td>Rappel à la loi, médiation, stage, réparation, composition pénale</td></tr>
 <tr><td>Classement sans suite</td><td>Infraction non constituée ou inopportunité — recours possible PG</td></tr>
-</table>
+</table></div>
 <div class="ok"><strong>Avis Parquet — 4 moments obligatoires (Art. 40 CPP) :</strong> (1) Constatation infraction · (2) Privation de liberté · (3) Demande prolongation GAV · (4) Fin de GAV</div>`,
 bloc2:`<h1>🗃️ Fichiers Police &amp; Réquisitions</h1>
 <h2>Fichiers liés aux Personnes</h2>
-<table>
+<div class="table-scroll"><table>
 <tr><th>Sigle</th><th>Nom complet</th><th>Contenu clé</th></tr>
 <tr><td><strong>TAJ</strong></td><td>Traitement des Antécédents Judiciaires</td><td>Mises en cause, victimes, témoins — Art. 230-6 CPP</td></tr>
 <tr><td><strong>FPR</strong></td><td>Fichier des Personnes Recherchées</td><td>Personnes sous mandat, fugitifs, disparitions</td></tr>
@@ -4377,9 +4392,9 @@ bloc2:`<h1>🗃️ Fichiers Police &amp; Réquisitions</h1>
 <tr><td><strong>FAED</strong></td><td>Fichier Automatisé Empreintes Digitales</td><td>Empreintes digitales/palmaires — <strong>Réquisition permanente</strong></td></tr>
 <tr><td><strong>FIJAISV</strong></td><td>Fichier Judiciaire Auteurs Infr. Sexuelles/Violentes</td><td>Condamnés ISV — Obligations de pointage</td></tr>
 <tr><td><strong>FIJAIT</strong></td><td>Fichier Judiciaire Auteurs Infr. Terroristes</td><td>Condamnés pour terrorisme</td></tr>
-</table>
+</table></div>
 <h2>Fichiers liés aux Véhicules</h2>
-<table>
+<div class="table-scroll"><table>
 <tr><th>Sigle</th><th>Nom</th><th>Usage</th></tr>
 <tr><td><strong>FOVES</strong></td><td>Fichier Objets Véhicules Signalés</td><td>Véhicules volés, objets signalés</td></tr>
 <tr><td><strong>SNPC</strong></td><td>Système National Permis de Conduire</td><td>Validité permis, solde de points</td></tr>
@@ -4387,16 +4402,16 @@ bloc2:`<h1>🗃️ Fichiers Police &amp; Réquisitions</h1>
 <tr><td><strong>FVA</strong></td><td>Fichier Véhicules Assurés</td><td>Vérification assurance</td></tr>
 <tr><td><strong>EUCARIS</strong></td><td>Système européen d'immatriculation</td><td>Véhicules étrangers</td></tr>
 <tr><td><strong>ADOC</strong></td><td>Accès Dossier Contraventions</td><td>Historique infractions routières</td></tr>
-</table>
+</table></div>
 <h2>Les Réquisitions — Cadre Juridique</h2>
-<table>
+<div class="table-scroll"><table>
 <tr><th>Cadre</th><th>Article</th><th>Autorité requérante</th><th>Spécificité</th></tr>
 <tr><td>Flagrant délit</td><td>Art. 60 CPP</td><td>OPJ directement</td><td>Pas d'autorisation préalable</td></tr>
 <tr><td>Enquête préliminaire</td><td>Art. 77-1 CPP</td><td>Sur autorisation PR</td><td>Autorisation préalable obligatoire</td></tr>
 <tr><td>FNAEG + FAED</td><td>Art. 706-55 CPP</td><td>OPJ directement</td><td><strong>Réquisitions permanentes — EP incluse</strong></td></tr>
-</table>
+</table></div>
 <h2>Types de Réquisitions</h2>
-<table>
+<div class="table-scroll"><table>
 <tr><th>Type</th><th>Objet</th></tr>
 <tr><td>Générales</td><td>Force publique, moyens de l'État</td></tr>
 <tr><td>À personnes qualifiées</td><td>Experts, médecins, UMJ, techniciens</td></tr>
@@ -4406,7 +4421,7 @@ bloc2:`<h1>🗃️ Fichiers Police &amp; Réquisitions</h1>
 <tr><td>Bancaires (FICOBA)</td><td>Comptes bancaires et mouvements financiers</td></tr>
 <tr><td>X-Ray téléphone</td><td>Analyse données téléphone — hors enquête — par personne qualifiée</td></tr>
 <tr><td>Interceptions (Art. 100 CPP)</td><td>Uniquement en information judiciaire (JI)</td></tr>
-</table>
+</table></div>
 <div class="ok"><strong>✓ Objectif :</strong> La manifestation de la vérité. Toute réquisition = PV de réquisition + réponse écrite du requis.</div>
 <div class="piege"><strong>⚠️ FNAEG / FAED :</strong> Réquisitions permanentes = l'OPJ peut accéder sans autorisation du Parquet, même en enquête préliminaire.</div>`
 };
@@ -5619,9 +5634,34 @@ const BADGE_DEFS=[
   {id:'b18',emoji:'🎓',name:'OPJ Élite',desc:'Toutes les leçons vues',cond:()=>{const t=CHAPTERS.reduce((a,c)=>a+c.lessons.length,0);return Object.keys(S.lessons).length>=t;}},
   {id:'b19',emoji:'🌙',name:'Noctambule',desc:'Session réalisée après 22h',cond:()=>false},// déclenchée manuellement
   {id:'b20',emoji:'⭐',name:'500 XP',desc:'500 XP gagnés',cond:()=>S.user.xp>=500},
-  {id:'flag_master',emoji:'🚨',name:'Maître de la Flagrance',desc:'Module oral 2 — taux ≥ 100 %',cond:()=>(S.oral?.module_2?.rate||0)>=1},
-  {id:'gav_guru',emoji:'🛡️',name:'Gardien des Droits',desc:'Module oral 8 — taux ≥ 100 %',cond:()=>(S.oral?.module_8?.rate||0)>=1},
-  {id:'cdo_specialist',emoji:'🎯',name:'Chasseur de CDO',desc:'Module oral 7 — taux ≥ 100 %',cond:()=>(S.oral?.module_7?.rate||0)>=1},
+  // Badges oraux : dépendent de window.ORAL_QB + S.oral.done (sans module_N fantômes)
+  {id:'flag_master',emoji:'🚨',name:'Maître de la Flagrance',desc:'Toutes les questions orales — Flagrance',cond:()=>{
+    if(typeof window==='undefined'||window.ORAL_QB===undefined||!Array.isArray(window.ORAL_QB))return false;
+    const questions=window.ORAL_QB.filter(q=>q.theme==='FLAGRANCE');
+    if(questions.length===0)return false;
+    const done=S.oral?.done||{};
+    return questions.every(q=>!!done[q.id]);
+  }},
+  {id:'gav_guru',emoji:'🛡️',name:'Gardien des Droits',desc:'Toutes les questions orales — GAV',cond:()=>{
+    if(typeof window==='undefined'||window.ORAL_QB===undefined||!Array.isArray(window.ORAL_QB))return false;
+    const questions=window.ORAL_QB.filter(q=>q.theme==='GAV');
+    if(questions.length===0)return false;
+    const done=S.oral?.done||{};
+    return questions.every(q=>!!done[q.id]);
+  }},
+  {id:'cdo_specialist',emoji:'🎯',name:'Chasseur de CDO',desc:'Toutes les questions orales — TSE / CO (thème TSE + série oral_m07)',cond:()=>{
+    if(typeof window==='undefined'||window.ORAL_QB===undefined||!Array.isArray(window.ORAL_QB))return false;
+    const seen=new Set();
+    const questions=window.ORAL_QB.filter(q=>{
+      if(!(q.theme==='TSE'||/^oral_m07/.test(q.id)))return false;
+      if(seen.has(q.id))return false;
+      seen.add(q.id);
+      return true;
+    });
+    if(questions.length===0)return false;
+    const done=S.oral?.done||{};
+    return questions.every(q=>!!done[q.id]);
+  }},
   {id:'pv_writer',emoji:'✍️',name:'Rédacteur Confirmé',desc:'8 cartouches PV validées',cond:()=>(S.pvDone||0)>=8},
   {id:'triptyque_20',emoji:'📑',name:'As du Triptyque',desc:'20 fiches maîtrisées',cond:()=>{
     const fromObj=Object.values(S.fiches||{}).filter(f=>f&&f.mastered).length;
@@ -5638,11 +5678,12 @@ const BADGE_DEFS=[
   {id:'exam_90',emoji:'🎓',name:'Prêt pour le Jury',desc:'Un examen blanc oral ≥ 90 %',cond:()=>(S.examHistory||[]).some(e=>e.scoreGlobal>=0.9)},
   {id:'early_bird',emoji:'🐦',name:'Premier Arrivé',desc:'QDJ correcte avant 9 h',cond:()=>(S.earlyBirdCount||0)>=1},
   {id:'oral_ready',emoji:'🎤',name:'Paré pour l\'Oral',desc:'3 examens blancs oraux ≥ 80 %',cond:()=>(S.examHistory||[]).filter(e=>e.scoreGlobal>=0.8).length>=3},
-  {id:'all_modules',emoji:'🗂️',name:'Programme Complet',desc:'14 modules oraux ≥ 80 %',cond:()=>{
-    const oral=S.oral||{};
-    const mods=Object.keys(oral).filter(k=>/^module_\d+$/.test(k));
-    if(mods.length<14)return false;
-    return mods.every(k=>{const m=oral[k];return m&&typeof m.rate==='number'&&m.rate>=0.8;});
+  {id:'all_modules',emoji:'🗂️',name:'Programme Complet',desc:'Toutes les questions du banc oral répondues',cond:()=>{
+    if(typeof window==='undefined'||window.ORAL_QB===undefined||!Array.isArray(window.ORAL_QB))return false;
+    const allQ=window.ORAL_QB;
+    if(allQ.length===0)return false;
+    const done=S.oral?.done||{};
+    return allQ.every(q=>!!done[q.id]);
   }},
 ];
 
