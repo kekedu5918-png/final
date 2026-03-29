@@ -752,12 +752,58 @@ body.app-shell{display:flex;flex-direction:column;min-height:100dvh}
 <div class="app-hdr"><div class="hdr-logo">OPJ <b>Elite</b></div><div class="hdr-pill" id="hdr-grade-pill-rev"></div><span class="hdr-xp" style="margin-left:auto" id="hdr-xp-rev"></span></div>
 <div class="scroll-area">
 <div id="rev-menu">
-<div class="rtabs" id="rev-tabs">
-  <button class="rtab on" id="rtab-reviser" onclick="setRevTab('reviser')">Réviser</button>
-  <button class="rtab" id="rtab-fiches" onclick="setRevTab('fiches')">Fiches</button>
-  <button class="rtab" id="rtab-procedures" onclick="setRevTab('procedures')">Procédures</button>
-  <button class="rtab" id="rtab-entrainement" onclick="setRevTab('entrainement')">Entraînement</button>
-  <button class="rtab" id="rtab-ressources" onclick="setRevTab('ressources')">Ressources</button>
+<div class="rev-mode-grid" id="rev-tabs">
+
+  <div class="rev-mode-card on" id="rmc-reviser"
+       onclick="setRevTab('reviser')" role="button" tabindex="0">
+    <div class="rev-mode-ico">🧠</div>
+    <div class="rev-mode-body">
+      <div class="rev-mode-label">QCM</div>
+      <div class="rev-mode-sub">33 thèmes · 593 questions</div>
+    </div>
+    <div class="rev-mode-stat" id="rmc-stat-reviser"></div>
+  </div>
+
+  <div class="rev-mode-card" id="rmc-fiches"
+       onclick="setRevTab('fiches')" role="button" tabindex="0">
+    <div class="rev-mode-ico">⚖️</div>
+    <div class="rev-mode-body">
+      <div class="rev-mode-label">Infractions</div>
+      <div class="rev-mode-sub">Fiches LAME · 64 infractions</div>
+    </div>
+    <div class="rev-mode-stat" id="rmc-stat-fiches">0/64</div>
+  </div>
+
+  <div class="rev-mode-card" id="rmc-procedures"
+       onclick="setRevTab('procedures')" role="button" tabindex="0">
+    <div class="rev-mode-ico">📋</div>
+    <div class="rev-mode-body">
+      <div class="rev-mode-label">Procédures</div>
+      <div class="rev-mode-sub">GAV · Flagrance · LP</div>
+    </div>
+    <div class="rev-mode-stat" id="rmc-stat-procedures">›</div>
+  </div>
+
+  <div class="rev-mode-card rev-mode-card--fire" id="rmc-entrainement"
+       onclick="setRevTab('entrainement')" role="button" tabindex="0">
+    <div class="rev-mode-ico">🎤</div>
+    <div class="rev-mode-body">
+      <div class="rev-mode-label">Entraînement</div>
+      <div class="rev-mode-sub">Oral · Blitz · Sessions</div>
+    </div>
+    <div class="rev-mode-stat" id="rmc-stat-entrainement">⚡</div>
+  </div>
+
+  <div class="rev-mode-card rev-mode-card--full" id="rmc-ressources"
+       onclick="setRevTab('ressources')" role="button" tabindex="0">
+    <div class="rev-mode-ico">📚</div>
+    <div class="rev-mode-body">
+      <div class="rev-mode-label">Ressources</div>
+      <div class="rev-mode-sub">Annales · Fiches PDF imprimables</div>
+    </div>
+    <div class="rev-mode-stat">›</div>
+  </div>
+
 </div>
 <div id="rtab-reviser-content">
 <div id="rev-smart-alerts" class="rev-smart-alerts" aria-live="polite"></div>

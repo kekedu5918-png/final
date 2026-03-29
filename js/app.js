@@ -2193,6 +2193,7 @@ function setRevTab(tab){
   const tabs=['reviser','fiches','procedures','entrainement','ressources'];
   tabs.forEach(t=>{
     document.getElementById('rtab-'+t)?.classList.toggle('on',t===tab);
+    document.getElementById('rmc-'+t)?.classList.toggle('on',t===tab);
     const c=document.getElementById('rtab-'+t+'-content');
     if(c)c.style.display=t===tab?'block':'none';
   });
@@ -2333,6 +2334,8 @@ function finishExamBlancOral(timedOut){
   S.examHistory.push({date:new Date().toISOString(),scoreGlobal,scoreParModule,dureeSecondes});
   while(S.examHistory.length>5)S.examHistory.shift();
   S._examBlancPendingWrong=[...new Set(ORAL_SESSION.wrongQuestionIds||[])];
+  const _xpEx=ORAL_SESSION.sessionXP||0;
+  if(_xpEx>0)showXPPop(_xpEx);
   try{save();}catch(e){}
   const payload={scoreGlobal,scoreParModule,dureeSecondes,timedOut:!!timedOut};
   ORAL_SESSION=null;
@@ -2523,6 +2526,8 @@ function oralFinishSession(){
     finishExamBlancOral(false);
     return;
   }
+  const _xpOr=ORAL_SESSION?.sessionXP||0;
+  if(_xpOr>0)showXPPop(_xpOr);
   ORAL_SESSION=null;
   oralCloseOv();
   try{renderOralMode();}catch(e){}
@@ -2678,6 +2683,8 @@ function renderRevThemes(){
   const themes=THEMES.filter(t=>QB.some(q=>q.cat===t.cat));
   const thCount=document.getElementById('qcm-themes-count');
   if(thCount)thCount.textContent=themes.length+' thèmes';
+  const rmcR=document.getElementById('rmc-stat-reviser');
+  if(rmcR)rmcR.textContent=themes.length+' th. · '+totalQ;
 
   renderSkeletons('theme-list',6,72);
   clearTimeout(window._skRevThemes);
@@ -2750,6 +2757,8 @@ function renderBubbles(){
   const pct=FB.length>0?Math.round(mastered/FB.length*100):0;
   const elSum=document.getElementById('fiches-summary');
   if(elSum)elSum.textContent=`${mastered}/${FB.length} maîtrisées · ${learning} en cours`;
+  const rmcF=document.getElementById('rmc-stat-fiches');
+  if(rmcF)rmcF.textContent=mastered+'/'+FB.length;
   const pb=document.getElementById('fiches-prog-bar');
   if(pb)pb.style.width=pct+'%';
 
@@ -3256,6 +3265,8 @@ function nextQuestion(){
   else renderCurrentQ();
 }
 function finishSession(){
+  const _xpFin=(S.qcm&&S.qcm.stats&&S.qcm.stats.xp)||0;
+  if(_xpFin>0)showXPPop(_xpFin);
   stopExamBanner();S.user.sessionsDone++;save();
   const tot=S.qcm.queue.length;
   const ok=S.qcm.stats.ok;
@@ -5863,6 +5874,7 @@ const BLITZ={
     clearInterval(BLITZ._s.timer);
     const{score,answers}=BLITZ._s;
     const xp=score*8+(score===10?50:0);addXP(xp);
+    if(xp>0)showXPPop(xp);
     if(score>(S.blitzBest||0)){S.blitzBest=score;save();}
     const _bov2=document.getElementById('blitz-ov');if(_bov2)_bov2.classList.remove('show');
     const _bro2=document.getElementById('blitz-results-ov');if(_bro2)_bro2.style.display='flex';
@@ -7111,3 +7123,12 @@ function confetti(intense=true){
 
   if(window.S){ensureMissions();renderMissionsCard();renderStudyPlan();renderErrorAnalysis();tryShowOnboarding();}
 })();
+function showXPPop(amount){
+  const el=document.createElement('div');
+  el.className='xp-pop';
+  el.textContent='+'+amount+' XP';
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(),1300);
+}
+window.showXPPop=showXPPop;
+if(typeof window!=='undefined'){window.BLITZ=BLITZ;window.BLITZ_ASSERTIONS=BLITZ_ASSERTIONS;}
