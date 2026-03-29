@@ -2888,7 +2888,7 @@ function renderBubbles(){
       'RECEL':'Recel','OUTRAGE':'Outrage','RÉBELLION':'Rébellion','USAGE STUPÉFIANTS':'Usage stups',
       'CONDUITE ALCOOLIQUE':'Conduite alcool','EXTORSION':'Extorsion','TRAFIC STUPÉFIANTS':'Trafic stups',
       'CORRUPTION PASSIVE':'Corruption',
-      'AGRESSION SEXUELLE':'Agress. sex.','VIOLENCE CONJUGALE':'Violence conj.','NON-ASSISTANCE':'Non-assistance',
+      'AGRESSION SEXUELLE':'Agress. sex.','VIOLENCE CONJUGALE':'Violence conj.','NON-ASSISTANCE':'Non-assistance','NON-ASSISTANCE À PERSONNE EN DANGER':'Non-assistance',
       'ASSASSINAT':'Assassinat','SÉQUESTRATION':'Séquestration','TRAITE DES ÊTRES':'Traite êtres',
       'ABUS DE FAIBLESSE':'Abus faiblesse','DÉLAISSEMENT':'Délaissement','FAUX ET USAGE':'Faux et usage',
       'BLANCHIMENT':'Blanchiment','PROXÉNÉTISME':'Proxénétisme','CORRUPTION ACTIVE':'Corrupt. active',
