@@ -1,10 +1,10 @@
 /* ═══════════════════════════════════════════════════════
-   Service Worker v95
+   Service Worker v96
    Chemins relatifs pour GitHub Pages (sous-dossier).
    Toutes les URLs sont résolues via self.registration.scope.
    ═══════════════════════════════════════════════════════ */
 
-const CACHE = 'opj-v95';
+const CACHE = 'opj-v96';
 
 const STATIC = [
   './',
