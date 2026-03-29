@@ -755,7 +755,10 @@ function save(){
       try{
         localStorage.setItem(STORAGE_KEY,JSON.stringify(S));
         localStorage.setItem('opje_sync_ts',String(Date.now()));
-      }catch(e){}
+      } catch (e) {
+        if (typeof showToast === 'function') showToast('⚠️ Stockage plein', 'err');
+        console.error('[OPJ] save (debounced)', e?.message || e);
+      }
       if(typeof currentUser!=='undefined'&&currentUser&&SYNC.debouncedSave)SYNC.debouncedSave();
     },300);
   }
