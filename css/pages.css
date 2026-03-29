@@ -1132,6 +1132,38 @@ input[type=month]::-webkit-calendar-picker-indicator { opacity:.5; filter:invert
   box-shadow:0 2px 16px rgba(255,140,66,.15);
 }
 
+.rev-recommended {
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  margin-bottom:16px;
+}
+
+.rev-rec-label {
+  font-size:10px;
+  font-weight:800;
+  color:var(--accent);
+  letter-spacing:.06em;
+  text-transform:uppercase;
+  font-family:'JetBrains Mono',monospace;
+}
+
+.rev-see-all {
+  background:none;
+  border:none;
+  color:var(--t3);
+  font-size:12px;
+  font-family:'Syne',sans-serif;
+  font-weight:600;
+  cursor:pointer;
+  padding:6px 0;
+  text-align:left;
+  transition:color 0.15s;
+  -webkit-tap-highlight-color:transparent;
+}
+
+.rev-see-all:active{color:var(--t1);}
+
 .rev-mode-ico {
   font-size:24px;
   flex-shrink:0;

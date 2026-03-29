@@ -676,7 +676,7 @@ function loadState(){
       } else {
         S={...defaultState(),...s,page:'home'};
         if(!S.badges)S.badges={};if(!S.badgeUiSeen)S.badgeUiSeen={};
-        if(!S._badgeUiBackfill){S._badgeUiBackfill=true;Object.keys(S.badges||{}).forEach(id=>{S.badgeUiSeen[id]=1;});try{save();}catch(e){}}
+        if(!S._badgeUiBackfill){S._badgeUiBackfill=true;Object.keys(S.badges||{}).forEach(id=>{S.badgeUiSeen[id]=1;});try{save();}catch(e){console.error('[OPJ] save',e?.message||e);}}
         if(!S.shield)S.shield={count:1,lastEarned:null};
         if(!S.activity)S.activity={};if(!S.defi)S.defi={lastDate:'',done:false};
         if(!S.pfs)S.pfs={};if(!S.fs)S.fs={};if(!S.flashFsrs)S.flashFsrs={};if(S.fsDueSession===undefined)S.fsDueSession=null;if(!S.annalesDone)S.annalesDone={};
@@ -760,6 +760,35 @@ function save(){
     },300);
   }
 }
+
+function getDailyKey(){ return new Date().toDateString(); }
+
+function updateDailyGoal(){
+  const goal = S.user?.dailyGoal || 3;
+  const today = getDailyKey();
+  if(S._dailyDate !== today){ S._dailyDone = 0; S._dailyDate = today; }
+  const done = S._dailyDone || 0;
+  const el = document.getElementById('daily-goal-display');
+  if(!el) return;
+  const pct = Math.min(done, goal);
+  el.textContent = pct + '/' + goal + ' sessions aujourd\'hui';
+  el.style.color = done >= goal ? 'var(--ok,#22c55e)' : 'var(--t3)';
+}
+
+function incrementDailyDone(){
+  const today = getDailyKey();
+  if(S._dailyDate !== today){ S._dailyDone = 0; S._dailyDate = today; }
+  S._dailyDone = (S._dailyDone || 0) + 1;
+  updateDailyGoal();
+  const goal = S.user?.dailyGoal || 3;
+  if(S._dailyDone === goal){
+    if(typeof showToast === 'function')
+      showToast('🎯 Objectif du jour atteint !','ok');
+    if(typeof confetti === 'function') confetti(false);
+  }
+  try{ save(); }catch(e){ console.error('[OPJ] dailyDone',e?.message||e); }
+}
+window.incrementDailyDone = incrementDailyDone;
 
 /* ─── FSRS : défini dans js/core/fsrs.js (const FSRS — ne pas redéclarer ici). ─── */
 
@@ -1073,6 +1102,7 @@ function navigateTo(page){
   const oldEl=document.querySelector('.page.active');
   S.page=page;
   if(oldEl===newEl){
+    if(page!=='revision')_revExpanded=false;
     runPageRender(page);
     syncPageHeader(page);
     window.scrollTo({top:0,behavior:'instant'});
@@ -1089,6 +1119,7 @@ function navigateTo(page){
       requestAnimationFrame(()=>{newEl.classList.remove('entering');});
     });
     document.querySelectorAll('.nav-btn').forEach(b=>{b.classList.toggle('active',b.id==='nav-'+page);});
+    if(page!=='revision')_revExpanded=false;
     runPageRender(page);
     syncPageHeader(page);
     window.scrollTo({top:0,behavior:'instant'});
@@ -1313,7 +1344,8 @@ function finishExamenBlanc(reason){
   S.examHistory=S.examHistory||[];
   S.examHistory.push(entry);
   while(S.examHistory.length>5)S.examHistory.shift();
-  try{save();}catch(e){}
+  if(typeof incrementDailyDone==='function')incrementDailyDone();
+  try{save();}catch(e){console.error('[OPJ] save',e?.message||e);}
   renderExamenBlancResultats(entry,reason);
 }
 function renderExamenBlancResultats(entry,reason){
@@ -1421,6 +1453,7 @@ function showPage(pageId){
   if(tab){
     S.page=tab;
     document.querySelectorAll('.nav-btn').forEach(b=>{b.classList.toggle('active',b.id==='nav-'+tab);});
+    if(tab!=='revision')_revExpanded=false;
     runPageRender(tab);
     syncPageHeader(tab);
   }else{
@@ -1491,7 +1524,7 @@ function reviewFlashcard(id,mastered){
   if(!id)return;
   if(S.fs)S.fs[id]=mastered?'m':'s';
   if(typeof FSRS!=='undefined'&&FSRS.reviewFlashcard)FSRS.reviewFlashcard(id,!!mastered);
-  try{save();}catch(e){}
+  try{save();}catch(e){console.error('[OPJ] save',e?.message||e);}
 }
 function renderJourJCurrent(){
   if(!jourJSession)return;
@@ -1554,7 +1587,7 @@ function jjAdvanceOral(correct){
     const prev=S.oral.scores[q.id]||0;
     const ptsKnown=correct?nPts:0;
     S.oral.scores[q.id]=Math.max(prev,ptsKnown);
-    try{save();}catch(e){}
+    try{save();}catch(e){console.error('[OPJ] save',e?.message||e);}
   }
   jourJSession.oralIndex++;
   if(jourJSession.oralIndex>=jourJSession.oralQuestions.length){
@@ -1737,7 +1770,7 @@ function endDueFicheSession(doneMsg){
   if(jjRev)S._jjRevision=false;
   S.fsDueSession=null;
   S._ficheOpenId=null;
-  try{save();}catch(e){}
+  try{save();}catch(e){console.error('[OPJ] save',e?.message||e);}
   const ov=document.getElementById('fiche-ov');
   if(ov){ov.style.display='none';ov.style.alignItems='flex-end';}
   document.body.style.overflow='';
@@ -1875,6 +1908,7 @@ function renderHome(){
   try{if(typeof showNotifPermissionBanner==='function')showNotifPermissionBanner();}catch(_){}
   const placementEl=document.getElementById('placement-card');
   if(placementEl)placementEl.style.display=S.placementDone?'none':'flex';
+  if(typeof updateDailyGoal === 'function') updateDailyGoal();
 }
 
 function renderChapterProgress(){if(typeof CHAPTERS==='undefined'||!CHAPTERS)return;
@@ -2171,6 +2205,67 @@ function renderSmartAlerts(){
   }).join('')+'</div>';
   return host.innerHTML;
 }
+let _revExpanded=false;
+
+function getRecommendedMode(){
+  /* Priorité 1 : fiches FSRS dues */
+  const due=typeof FSRS!=='undefined'&&FSRS.getDueFlashcards
+    ?FSRS.getDueFlashcards(S.flashFsrs||{}):[];
+  if(due.length>0)return{
+    tab:'fiches',ico:'⚖️',
+    label:'Fiches à réviser',
+    sub:due.length+' carte'+(due.length>1?'s':'')+' due'+(due.length>1?'s':'')+' · 5 min'
+  };
+  /* Priorité 2 : erreurs à corriger */
+  const errCount=S.errorLog?Object.keys(S.errorLog).length:0;
+  if(errCount>0)return{
+    tab:'reviser',ico:'🧠',
+    label:'Réviser mes erreurs',
+    sub:errCount+' erreur'+(errCount>1?'s':'')+' à corriger'
+  };
+  /* Défaut */
+  return{
+    tab:'reviser',ico:'🧠',
+    label:'Révision QCM',
+    sub:'Adapté à tes lacunes · 15 min'
+  };
+}
+
+function applyRevExpanded(){
+  const recCard=document.getElementById('rev-recommended-card');
+  const grid=document.getElementById('rev-tabs');
+  if(!recCard||!grid)return;
+
+  if(_revExpanded){
+    recCard.style.display='none';
+    grid.style.display='';
+    if(!document.getElementById('rev-collapse-btn')){
+      const btn=document.createElement('button');
+      btn.id='rev-collapse-btn';
+      btn.type='button';
+      btn.className='rev-see-all';
+      btn.textContent='← Réduire';
+      btn.onclick=()=>{_revExpanded=false;applyRevExpanded();};
+      grid.after(btn);
+    }
+  }else{
+    document.getElementById('rev-collapse-btn')?.remove();
+    const rec=getRecommendedMode();
+    const ico=document.getElementById('rev-rec-ico');
+    const title=document.getElementById('rev-rec-title');
+    const sub=document.getElementById('rev-rec-sub');
+    const main=document.getElementById('rev-rec-main');
+    const seeAll=document.getElementById('rev-see-all-btn');
+    if(ico)ico.textContent=rec.ico;
+    if(title)title.textContent=rec.label;
+    if(sub)sub.textContent=rec.sub;
+    if(main)main.onclick=()=>setRevTab(rec.tab);
+    if(seeAll)seeAll.onclick=()=>{_revExpanded=true;applyRevExpanded();};
+    recCard.style.display='';
+    grid.style.display='none';
+  }
+}
+
 function renderRevision(){
   renderSmartAlerts();
   renderRevThemes();renderBubbles();renderProcList();updateDueCount();
@@ -2185,6 +2280,7 @@ function renderRevision(){
       if(subEl)subEl.textContent=sorted.map(e=>e[0]).join(', ');
     }
   }
+  if(typeof applyRevExpanded==='function')applyRevExpanded();
 }
 function setRevTab(tab){
   S.rev=S.rev||{};
@@ -2337,7 +2433,8 @@ function finishExamBlancOral(timedOut){
   S._examBlancPendingWrong=[...new Set(ORAL_SESSION.wrongQuestionIds||[])];
   const _xpEx=ORAL_SESSION.sessionXP||0;
   if(_xpEx>0)showXPPop(_xpEx);
-  try{save();}catch(e){}
+  if(typeof incrementDailyDone==='function')incrementDailyDone();
+  try{save();}catch(e){console.error('[OPJ] save',e?.message||e);}
   const payload={scoreGlobal,scoreParModule,dureeSecondes,timedOut:!!timedOut};
   ORAL_SESSION=null;
   oralRenderExamBlancResults(payload);
@@ -2391,7 +2488,7 @@ function startExamBlancErrorReview(){
   const ids=S._examBlancPendingWrong||[];
   const qs=[...new Set(ids)].map(id=>ORAL_QB.find(q=>q.id===id)).filter(Boolean);
   S._examBlancPendingWrong=null;
-  try{save();}catch(e){}
+  try{save();}catch(e){console.error('[OPJ] save',e?.message||e);}
   oralCloseOv();
   if(!qs.length){
     startSmartSession();
@@ -2529,6 +2626,7 @@ function oralFinishSession(){
   }
   const _xpOr=ORAL_SESSION?.sessionXP||0;
   if(_xpOr>0)showXPPop(_xpOr);
+  if(typeof incrementDailyDone==='function')incrementDailyDone();
   ORAL_SESSION=null;
   oralCloseOv();
   try{renderOralMode();}catch(e){}
@@ -2875,7 +2973,7 @@ function openFiche(id){
   S._ficheOpenId=id;
   if(S.fsDueSession?.ids?.length&&!S.fsDueSession.ids.includes(id)){
     S.fsDueSession=null;
-    try{save();}catch(e){}
+    try{save();}catch(e){console.error('[OPJ] save',e?.message||e);}
   }
   /* FIX v49 — déplacer fiche-ov hors de p-revision (display:none) vers #app */
   (function ensureGlobal(){
@@ -3291,7 +3389,9 @@ function nextQuestion(){
 function finishSession(){
   const _xpFin=(S.qcm&&S.qcm.stats&&S.qcm.stats.xp)||0;
   if(_xpFin>0)showXPPop(_xpFin);
-  stopExamBanner();S.user.sessionsDone++;save();
+  stopExamBanner();S.user.sessionsDone++;
+  if(typeof incrementDailyDone==='function')incrementDailyDone();
+  save();
   const tot=S.qcm.queue.length;
   const ok=S.qcm.stats.ok;
   const xpGain=S.qcm.stats.xp||0;
@@ -4611,7 +4711,7 @@ body::before{
 
 /* KPI GRID — chiffres qui impressionnent */
 .hero-kpis{
-  display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:18px;
+  display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:18px;
 }
 .hero-kpi{
   background:rgba(0,0,0,.28);
@@ -5765,7 +5865,7 @@ const BADGES={
     grid.innerHTML=BADGE_DEFS.map(b=>{
       const unlocked=!!S.badges[b.id];
       let pop='';
-      if(unlocked&&!S.badgeUiSeen[b.id]){S.badgeUiSeen[b.id]=1;try{save();}catch(e){}pop=' badge-item--pop';}
+      if(unlocked&&!S.badgeUiSeen[b.id]){S.badgeUiSeen[b.id]=1;try{save();}catch(e){console.error('[OPJ] save',e?.message||e);}pop=' badge-item--pop';}
       return`<button type="button" 
     class="badge-item ${unlocked?'unlocked':'locked'}${pop}" 
     onclick="BADGES.onBadgeTap('${b.id}')"
@@ -5897,6 +5997,7 @@ const BLITZ={
   _finish(){
     clearInterval(BLITZ._s.timer);
     const{score,answers}=BLITZ._s;
+    if(typeof incrementDailyDone==='function')incrementDailyDone();
     const xp=score*8+(score===10?50:0);addXP(xp);
     if(xp>0)showXPPop(xp);
     if(score>(S.blitzBest||0)){S.blitzBest=score;save();}
@@ -6658,8 +6759,8 @@ function confetti(intense=true){
   const CSS = `
     .bubble-grid {
       display:grid !important;
-      grid-template-columns:repeat(3,1fr) !important;
-      gap:6px !important;
+      grid-template-columns:repeat(2,1fr) !important;
+      gap:10px !important;
       padding:0 !important;
       box-sizing:border-box !important;
       width:100% !important;

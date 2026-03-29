@@ -673,6 +673,10 @@ body.app-shell{display:flex;flex-direction:column;min-height:100dvh}
       <span class="btn-continue-lbl">Continuer ma progression</span>
       <span class="btn-continue-arr">→</span>
     </button>
+    <div id="daily-goal-display"
+         style="font-size:10px;font-family:'JetBrains Mono',
+         monospace;color:var(--t3);margin-top:6px;
+         text-align:center"></div>
   </div>
 </div>
 <span id="h-lessons-done" style="display:none">0</span>
@@ -752,6 +756,24 @@ body.app-shell{display:flex;flex-direction:column;min-height:100dvh}
 <div class="app-hdr"><div class="hdr-logo">OPJ <b>Elite</b></div><div class="hdr-pill" id="hdr-grade-pill-rev"></div><span class="hdr-xp" style="margin-left:auto" id="hdr-xp-rev"></span></div>
 <div class="scroll-area">
 <div id="rev-menu">
+<div class="rev-recommended" id="rev-recommended-card"
+     style="display:none">
+  <div class="rev-rec-label">⚡ Recommandé maintenant</div>
+  <div class="rev-mode-card on rev-mode-card--full"
+       id="rev-rec-main"
+       role="button" tabindex="0">
+    <div class="rev-mode-ico" id="rev-rec-ico">🧠</div>
+    <div class="rev-mode-body">
+      <div class="rev-mode-label" id="rev-rec-title">Révision QCM</div>
+      <div class="rev-mode-sub"  id="rev-rec-sub">Adapté à tes lacunes · 15 min</div>
+    </div>
+    <div class="rev-mode-stat">→</div>
+  </div>
+  <button type="button" class="rev-see-all"
+          id="rev-see-all-btn">
+    Voir tous les modes ›
+  </button>
+</div>
 <div class="rev-mode-grid" id="rev-tabs">
 
   <div class="rev-mode-card on" id="rmc-reviser"
