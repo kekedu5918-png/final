@@ -632,7 +632,9 @@ function defaultState(){
     // Missions quotidiennes v2 — objet rempli par ensureDailyMissions2 (date, active, prog)
     missions2:{},
     proExpiry:null,
-    stripeCustId:null
+    stripeCustId:null,
+    streakFreezeLeft: 1,
+    streakFreezeWeek: '',
   };
 }
 let S=defaultState();
@@ -912,11 +914,38 @@ function addXP(base){
 // Avantage : intuitif ("j'ai révisé aujourd'hui").
 // Inconvénient : révision à 23h59 puis 00h01 = 2 jours.
 // À ne pas modifier sans mettre à jour la migration state.
+function getIsoWeekKey(d = new Date()) {
+  const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const day = t.getUTCDay() || 7;
+  t.setUTCDate(t.getUTCDate() + 4 - day);
+  const y = t.getUTCFullYear();
+  const w = Math.ceil((((t - new Date(Date.UTC(y, 0, 1))) / 86400000) + 1) / 7);
+  return `${y}-W${String(w).padStart(2, '0')}`;
+}
+
+function maybeUseStreakFreeze() {
+  const wk = getIsoWeekKey();
+  if (!S.streakFreezeWeek || S.streakFreezeWeek !== wk) {
+    S.streakFreezeWeek = wk;
+    S.streakFreezeLeft = 1;
+  }
+  if (S.streakFreezeLeft < 1) return false;
+  S.streakFreezeLeft--;
+  save();
+  return true;
+}
+
 function updateStreak(){
   const today=new Date().toDateString();
   const yest=new Date(Date.now()-86400000).toDateString();
   if(S.user.lastActivity===today)return;
-  S.user.streak=S.user.lastActivity===yest?(S.user.streak||0)+1:1;
+  if (S.user.lastActivity === yest) {
+    S.user.streak = (S.user.streak || 0) + 1;
+  } else if (maybeUseStreakFreeze()) {
+    showToast('🛡️ Streak protégé cette semaine !', 'ok');
+  } else {
+    S.user.streak = 1;
+  }
   S.user.lastActivity=today;
   if(S.user.streak>(S.user.streakRecord||0))S.user.streakRecord=S.user.streak;
 }
@@ -2284,6 +2313,13 @@ function renderRevision(){
     }
   }
   if(typeof applyRevExpanded==='function')applyRevExpanded();
+  const expressBtn = document.getElementById('btn-express-home');
+  if (expressBtn) {
+    expressBtn.onclick = () => {
+      startFlashExpress();
+      navigateTo('revision');
+    };
+  }
 }
 function setRevTab(tab){
   S.rev=S.rev||{};
@@ -6012,7 +6048,7 @@ const BLITZ={
     const _brv=document.getElementById('blitz-review');if(_brv)_brv.innerHTML=answers.map(a=>`
       <div style="background:var(--bg-1);border-left:3px solid ${a.correct?'var(--ok)':'var(--err)'};border-radius:0 var(--r-s) var(--r-s) 0;padding:8px 10px;margin-bottom:6px">
         <div class="text-xs fw-700" style="color:${a.correct?'var(--ok)':'var(--err)'}">${a.correct?'✓ CORRECT':'✗ INCORRECT'} — Réponse : ${a.ans?'VRAI':'FAUX'}</div>
-        <div class="text-xs text-secondary mt8">${a.expl}</div>
+        <div class="text-xs text-secondary mt8">${eh(a.expl)}</div>
       </div>`).join('');
     if(score===10)confetti(true);BADGES.checkAll();
   },
