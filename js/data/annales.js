@@ -1,12 +1,11 @@
+/* Chaîne XP alignée sur le parcours vers l’habilitation OPJ (clés SVG : app.js GRADE_SVGS) */
 const GRADES=[
-  {name:'Gardien Stagiaire',min:0,icon:'👮'},
-  {name:'Gardien de la Paix',min:200,icon:'👮'},
-  {name:'Brigadier-chef',min:500,icon:'⭐'},
-  {name:'Major de Police',min:1000,icon:'⭐⭐'},
-  {name:'Lieutenant de Police',min:1800,icon:'🌟'},
-  {name:'Capitaine de Police',min:3000,icon:'🏅'},
-  {name:'Commandant de Police',min:5000,icon:'🎖️'},
-  {name:'Commissaire de Police',min:8000,icon:'🏆'},
+  {name:'Gardien de la Paix',min:0,icon:'👮',sk:'gp'},
+  {name:'APJ confirmé',min:150,icon:'⭐',sk:'apj'},
+  {name:'OPJ stagiaire',min:500,icon:'🌟',sk:'opj-s'},
+  {name:'OPJ habilité — ressort',min:1200,icon:'🏅',sk:'opj-h'},
+  {name:'OPJ habilité — national',min:3000,icon:'🎖️',sk:'opj-n'},
+  {name:'OPJ — Juridiction spécialisée',min:6000,icon:'🏆',sk:'opj-sp'},
 ];
 
 const ANNALES=[
@@ -14,7 +13,7 @@ const ANNALES=[
 question:"Après avoir défini la garde à vue, exposez ses conditions de fond et de forme, puis analysez les garanties de la personne gardée à vue.",
 motscles:["Art. 63 CPP","Raisons plausibles","Droits fondamentaux","Avocat","Prolongation"],
 plan:[{n:"I",t:"Le cadre légal de la garde à vue"},{n:"A",t:"Conditions de fond"},{n:"B",t:"Conditions de forme"},{n:"II",t:"Les garanties"},{n:"A",t:"Droits notifiés dès le placement"},{n:"B",t:"Le contrôle judiciaire"}],
-intro:"La garde à vue constitue l'une des mesures les plus attentatoires aux libertés individuelles. Définie à l'article 63 CPP, elle se définit comme la mesure de contrainte par laquelle l'OPJ retient à sa disposition, pour les nécessités de l'enquête, une personne à l'encontre de laquelle il existe des raisons plausibles de soupçonner qu'elle a commis ou tenté de commettre un crime ou un délit puni d'emprisonnement.",
+intro:"La garde à vue est une mesure de privation de liberté encadrée par les articles 62-2 (conditions de placement) et 63 et suivants CPP (durées, droits). Elle ne peut être ordonnée que si les conditions légales sont réunies et après décision écrite de l'OPJ, avec information immédiate du procureur.",
 corrige:"I. LE CADRE LÉGAL\n\nA. Conditions de fond\nDeux conditions cumulatives : raisons plausibles + nécessités de l'enquête.\n\nB. Conditions de forme\nDécision de l'OPJ. PR informé immédiatement.\n\nII. LES GARANTIES\n\nA. Droits notifiés dès le placement\nArt. 63-1 : avocat dès le début, médecin, proche, silence.\n\nB. Contrôle judiciaire\nPR peut ordonner la fin à tout moment. Prolongation : autorisation écrite PR.",
 erreurs:["Oublier la condition de peine d'emprisonnement","Confondre information PR et autorisation","Omettre le droit au silence","Confondre GAV droit commun (48h) et CO (96h)"]},
 {id:"A02",titre:"La commission rogatoire",matiere:"Procédure pénale",coeff:3,duree:"4h",

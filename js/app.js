@@ -1,19 +1,84 @@
 
 'use strict';
 /* ═══════════════════════════════════════════════════════
-   OPJ ELITE v60.0 — Script unique, architecture propre
-   Ordre chargement HTML : fsrs, audio, supabase, chapters.js, questions.js,
-         flashcards.js, puis ce fichier (GRADES → STATE → FSRS → NAV → …)
+   OPJ ELITE — Script principal
+   Ordre HTML : config.js, sanitize.js, fsrs, audio, supabase, données, pv-cartouches-extra, puis ce fichier
    ═══════════════════════════════════════════════════════ */
 
-/* ─── VERSION ─── */
-const APP_VERSION='v60.0', STORAGE_KEY='opje_v60', STATE_VERSION=60;
+const _CFG = window.OPJ_CONFIG || {};
+const APP_CONFIG = _CFG;
+(function migrateOpjeStorage() {
+  const OLD_KEY = 'opje_v60';
+  const NEW_KEY = _CFG.STORAGE_KEY || 'opje_v61';
+  try {
+    if (localStorage.getItem(NEW_KEY)) return;
+    const legacy = localStorage.getItem(OLD_KEY);
+    if (!legacy) return;
+    const data = JSON.parse(legacy);
+    if (data.user && data.user.grade !== undefined) delete data.user.grade;
+    localStorage.setItem(NEW_KEY, JSON.stringify(data));
+    localStorage.removeItem(OLD_KEY);
+    console.info('[OPJ] Migration stockage ' + OLD_KEY + ' → ' + NEW_KEY + ' : OK');
+  } catch (e) {
+    try { localStorage.removeItem(OLD_KEY); } catch (_) {}
+    console.warn('[OPJ] Migration stockage : données v60 illisibles, ignorées.');
+  }
+})();
+const APP_VERSION = _CFG.APP_VERSION || 'v61.0';
+const STORAGE_KEY = _CFG.STORAGE_KEY || 'opje_v61';
+const STATE_VERSION = _CFG.STATE_VERSION || 61;
+const SUPABASE_URL = _CFG.SUPABASE_URL || '';
+const SUPABASE_ANON_KEY = _CFG.SUPABASE_ANON_KEY || '';
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   SUPABASE CONFIGURATION — Auth + Sync + Stripe Ready
-   ═══════════════════════════════════════════════════════════════════════════ */
-const SUPABASE_URL = 'https://vwkymggfxgkfbbklkhhd.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ3a3ltZ2dmeGdrZmJia2xraGhkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ0MDgwMzUsImV4cCI6MjA4OTk4NDAzNX0.Tej5sI0KPvn3UN_G79l001GzDlJ6Xk9BJlI9zWAS7EY';
+function parseExamDate(raw) {
+  if (!raw || typeof raw !== 'string') return null;
+  const t = raw.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(t)) {
+    const d = new Date(t + 'T12:00:00');
+    return isNaN(d.getTime()) ? null : d;
+  }
+  if (/^\d{4}-\d{2}$/.test(t)) {
+    const d = new Date(t + '-01T12:00:00');
+    return isNaN(d.getTime()) ? null : d;
+  }
+  return null;
+}
+function daysUntilExam(raw) {
+  const exam = parseExamDate(raw);
+  if (!exam) return null;
+  const dayMs = 86400000;
+  const today = new Date();
+  const startToday = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+  const startExam = new Date(exam.getFullYear(), exam.getMonth(), exam.getDate()).getTime();
+  return Math.ceil((startExam - startToday) / dayMs);
+}
+function formatExamSessionLabel(raw) {
+  if (!raw || typeof raw !== 'string') return '';
+  const t = raw.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(t)) {
+    const [y, mo, d] = t.split('-');
+    return d + '/' + mo + '/' + y;
+  }
+  return t.replace('-', ' · ');
+}
+function examPhaseLabel(daysLeft) {
+  if (daysLeft === null || daysLeft === undefined) {
+    return { icon: '📚', lbl: 'FONDATIONS', txt: 'Théorie + infractions' };
+  }
+  if (daysLeft < 0) {
+    return { icon: '📌', lbl: 'POST-EXAMEN', txt: 'Période post-examen' };
+  }
+  if (daysLeft === 0) {
+    return { icon: '🎯', lbl: 'JOUR J', txt: 'C\'est aujourd\'hui — bonne chance !' };
+  }
+  if (daysLeft <= 14) {
+    return { icon: '🔥', lbl: 'SPRINT FINAL', txt: 'Examens blancs + ciblage lacunes' };
+  }
+  if (daysLeft <= 40) {
+    return { icon: '⚡', lbl: 'INTENSIF', txt: 'Simulateur oral + exercices PV' };
+  }
+  return { icon: '📚', lbl: 'FONDATIONS', txt: 'Théorie + infractions' };
+}
 
 // Client Supabase
 let supabaseClient = null;
@@ -109,13 +174,31 @@ const AUTH = {
   }
 };
 
+async function withSupabaseTimeout(promise, ms = 5000) {
+  let timerId;
+  const timeout = new Promise((_, reject) => {
+    timerId = setTimeout(
+      () => reject(new Error('supabase_timeout')), ms
+    );
+  });
+  try {
+    const result = await Promise.race([promise, timeout]);
+    clearTimeout(timerId);
+    return result;
+  } catch (e) {
+    clearTimeout(timerId);
+    throw e;
+  }
+}
+
 // ─── SYNC FUNCTIONS ───
 const SYNC = {
   // Sauvegarder la progression dans Supabase
   async saveProgress() {
     if (!supabaseClient || !currentUser) return false;
     try {
-      const { error } = await supabaseClient.from('progress').upsert({
+      const { error } = await withSupabaseTimeout(
+        supabaseClient.from('progress').upsert({
         user_id: currentUser.id,
         xp: S.user.xp,
         streak: S.user.streak,
@@ -133,11 +216,24 @@ const SYNC = {
         cr_done: S.crDone || 0,
         tc_done: S.tcDone || 0,
         perfect_sessions: S.perfectSessions || 0,
+        flash_fsrs: S.flashFsrs || {},
+        oral_scores: S.oral || {},
+        fs_due_session: S.fsDueSession,
         updated_at: new Date().toISOString()
-      }, { onConflict: 'user_id' });
+      }, { onConflict: 'user_id' })
+      );
       if (error) console.warn('[SYNC] Erreur save:', error);
+      else {
+        try {
+          localStorage.setItem('opje_sync_ts', String(Date.now()));
+        } catch (_) {}
+      }
       return !error;
     } catch (e) {
+      if (e && e.message === 'supabase_timeout') {
+        console.warn('[SYNC] supabase_timeout (saveProgress)');
+        return false;
+      }
       console.warn('[SYNC] Exception:', e);
       return false;
     }
@@ -148,38 +244,91 @@ const SYNC = {
     if (!supabaseClient || !currentUser) return false;
     try {
       // Charger le profil
-      const { data: profile } = await supabaseClient.from('profiles')
-        .select('*').eq('id', currentUser.id).single();
-      
+      let profile;
+      try {
+        const r = await withSupabaseTimeout(
+          supabaseClient.from('profiles')
+            .select('*').eq('id', currentUser.id).single()
+        );
+        profile = r.data;
+      } catch (e) {
+        if (e && e.message === 'supabase_timeout') console.warn('[SYNC] supabase_timeout (loadProgress profiles)');
+        else throw e;
+      }
+
       // Charger la progression
-      const { data: progress } = await supabaseClient.from('progress')
-        .select('*').eq('user_id', currentUser.id).single();
-      
+      let progress;
+      try {
+        const r = await withSupabaseTimeout(
+          supabaseClient.from('progress')
+            .select('*').eq('user_id', currentUser.id).single()
+        );
+        progress = r.data;
+      } catch (e) {
+        if (e && e.message === 'supabase_timeout') console.warn('[SYNC] supabase_timeout (loadProgress progress)');
+        else throw e;
+      }
+
       // Charger l'abonnement
-      const { data: sub } = await supabaseClient.from('subscriptions')
-        .select('*').eq('user_id', currentUser.id).single();
+      let sub;
+      try {
+        const r = await withSupabaseTimeout(
+          supabaseClient.from('subscriptions')
+            .select('*').eq('user_id', currentUser.id).single()
+        );
+        sub = r.data;
+      } catch (e) {
+        if (e && e.message === 'supabase_timeout') console.warn('[SYNC] supabase_timeout (loadProgress subscriptions)');
+        else throw e;
+      }
 
       if (profile) {
         S.user.name = profile.name || 'Officier';
-        S.user.examDate = profile.exam_date || '2026-06';
+        S.user.examDate = profile.exam_date || '2026-06-15';
       }
       if (progress) {
-        S.user.xp = progress.xp || 0;
-        S.user.streak = progress.streak || 0;
-        S.user.streakRecord = progress.streak_record || 0;
-        S.user.lastActivity = progress.last_activity;
-        S.user.sessionsDone = progress.sessions_done || 0;
-        S.qcm.cards = progress.qcm_cards || {};
-        S.lessons = progress.lessons || {};
-        S.fiches = progress.fiches || {};
-        S.badges = progress.badges || {};
-        S.activity = progress.activity || {};
-        S.shield = progress.shield || { count: 1, lastEarned: null };
-        S.annalesDone = progress.annales_done || {};
-        S.blitzBest = progress.blitz_best || 0;
-        S.crDone = progress.cr_done || 0;
-        S.tcDone = progress.tc_done || 0;
-        S.perfectSessions = progress.perfect_sessions || 0;
+        const cloudTs = progress.updated_at ? new Date(progress.updated_at).getTime() : 0;
+        let localTs = 0;
+        try {
+          localTs = Number(localStorage.getItem('opje_sync_ts') || 0);
+        } catch (_) {}
+        /* Nuage plus récent que la dernière sauvegarde locale : on applique la ligne progress (évite d'écraser le offline récent). */
+        const cloudWins = cloudTs > localTs || (localTs === 0 && cloudTs === 0 && (progress.xp > 0 || (progress.qcm_cards && Object.keys(progress.qcm_cards).length)));
+        if (cloudWins) {
+          S.user.xp = progress.xp || 0;
+          S.user.streak = progress.streak || 0;
+          S.user.streakRecord = progress.streak_record || 0;
+          S.user.lastActivity = progress.last_activity;
+          S.user.sessionsDone = progress.sessions_done || 0;
+          S.qcm.cards = progress.qcm_cards || {};
+          S.lessons = progress.lessons || {};
+          S.fiches = progress.fiches || {};
+          S.badges = progress.badges || {};
+          S.activity = progress.activity || {};
+          S.shield = progress.shield || { count: 1, lastEarned: null };
+          S.annalesDone = progress.annales_done || {};
+          S.blitzBest = progress.blitz_best || 0;
+          S.crDone = progress.cr_done || 0;
+          S.tcDone = progress.tc_done || 0;
+          S.perfectSessions = progress.perfect_sessions || 0;
+          const parseJson = (v, fallback) => {
+            if (v == null) return fallback;
+            if (typeof v === 'string') {
+              try {
+                return JSON.parse(v);
+              } catch (_) {
+                return fallback;
+              }
+            }
+            return v;
+          };
+          S.flashFsrs = parseJson(progress.flash_fsrs, S.flashFsrs || {});
+          S.oral = parseJson(progress.oral_scores, S.oral || { done: {}, scores: {} });
+          S.fsDueSession = parseJson(progress.fs_due_session, S.fsDueSession);
+          try {
+            localStorage.setItem('opje_sync_ts', String(cloudTs || Date.now()));
+          } catch (_) {}
+        }
       }
       if (sub) {
         S.isPro = sub.is_pro || false;
@@ -270,23 +419,28 @@ const STRIPE = {
 
 /* ─── GRADES ─── défini dans js/data/annales.js (chargé avant app.js) */
 
-/* ─── GRADES SVG (insignes PN — géométrie minimaliste) ─── */
+/* ─── GRADES SVG (parcours habilitation — clés sk dans GRADES) ─── */
 const GRADE_SVGS = {
-  'Gardien Stagiaire': `<svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="2" y="2" width="44" height="44" rx="11" fill="#070b15" stroke="#1b6bff" stroke-width="1.25"/><path d="M24 10.5l2.55 7.85h8.25L27.1 25.2l2.55 7.85L24 29.35l-5.65 4.1 2.55-7.85-5.65-4.1h8.25z" fill="none" stroke="#e8eeff" stroke-width="1.15" stroke-linejoin="round"/></svg>`,
-  'Gardien de la Paix': `<svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="2" y="2" width="44" height="44" rx="11" fill="#070b15" stroke="#1b6bff" stroke-width="1.25"/><path d="M24 10.5l2.55 7.85h8.25L27.1 25.2l2.55 7.85L24 29.35l-5.65 4.1 2.55-7.85-5.65-4.1h8.25z" fill="#c8921a" stroke="#8f6a14" stroke-width="0.6" stroke-linejoin="round"/></svg>`,
-  'Brigadier-chef': `<svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="2" y="2" width="44" height="44" rx="11" fill="#070b15" stroke="#1b6bff" stroke-width="1"/><path d="M24 12l12 13h-4.8L24 17.2 16.8 25H12z" fill="#c8921a"/><path d="M24 23l12 13h-4.8L24 28.2 16.8 36H12z" fill="#c8921a"/></svg>`,
-  'Major de Police': `<svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="2" y="2" width="44" height="44" rx="11" fill="#070b15" stroke="#1b6bff" stroke-width="1"/><path d="M24 7l10 11h-4L24 11.5 18 18h-4z" fill="#c8921a"/><path d="M24 15l10 11h-4L24 19.5 18 26h-4z" fill="#c8921a"/><path d="M24 23l10 11h-4L24 27.5 18 34h-4z" fill="#c8921a"/><rect x="4" y="39" width="40" height="6" rx="1.5" fill="#c8921a"/></svg>`,
-  'Lieutenant de Police': `<svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="2" y="2" width="44" height="44" rx="11" fill="#070b15" stroke="#1b6bff" stroke-width="1"/><rect x="7" y="19" width="34" height="10" rx="2" fill="#c8921a"/></svg>`,
-  'Capitaine de Police': `<svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="2" y="2" width="44" height="44" rx="11" fill="#070b15" stroke="#1b6bff" stroke-width="1"/><rect x="7" y="15" width="34" height="8" rx="2" fill="#c8921a"/><rect x="7" y="26" width="34" height="8" rx="2" fill="#c8921a"/></svg>`,
-  'Commandant de Police': `<svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="2" y="2" width="44" height="44" rx="11" fill="#070b15" stroke="#1b6bff" stroke-width="1"/><path d="M24 6l2.2 6.75h7.1l-5.75 4.2 2.2 6.75L24 19.9l-4.85 3.55 2.2-6.75-5.75-4.2h7.1z" fill="#c8921a"/><rect x="7" y="24" width="34" height="6" rx="1.5" fill="#c8921a"/><rect x="7" y="32" width="34" height="6" rx="1.5" fill="#c8921a"/><rect x="7" y="40" width="34" height="5" rx="1.5" fill="#c8921a"/></svg>`,
-  'Commissaire de Police': `<svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="2" y="2" width="44" height="44" rx="11" fill="#070b15" stroke="#c8921a" stroke-width="0.9"/><polygon points="12,9 13.4,12.2 12,15.4 10.6,12.2" fill="#c8921a"/><polygon points="24,9 25.4,12.2 24,15.4 22.6,12.2" fill="#c8921a"/><polygon points="36,9 37.4,12.2 36,15.4 34.6,12.2" fill="#c8921a"/><path d="M11 38.5L13.5 22h21l2.5 16.5z" fill="#1b6bff" stroke="#e8eeff" stroke-width="0.7"/><rect x="9" y="19.5" width="30" height="4" rx="1" fill="#c8921a"/><ellipse cx="24" cy="40" rx="15" ry="4.8" fill="#03060d" stroke="#c8921a" stroke-width="1.1"/></svg>`
+  gp: `<svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="2" y="2" width="44" height="44" rx="11" fill="#070b15" stroke="#1b6bff" stroke-width="1.25"/><path d="M24 10.5l2.55 7.85h8.25L27.1 25.2l2.55 7.85L24 29.35l-5.65 4.1 2.55-7.85-5.65-4.1h8.25z" fill="#c8921a" stroke="#8f6a14" stroke-width="0.6" stroke-linejoin="round"/></svg>`,
+  apj: `<svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="2" y="2" width="44" height="44" rx="11" fill="#070b15" stroke="#1b6bff" stroke-width="1"/><path d="M24 12l12 13h-4.8L24 17.2 16.8 25H12z" fill="#c8921a"/><path d="M24 23l12 13h-4.8L24 28.2 16.8 36H12z" fill="#c8921a"/></svg>`,
+  'opj-s': `<svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="2" y="2" width="44" height="44" rx="11" fill="#070b15" stroke="#1b6bff" stroke-width="1"/><path d="M24 7l10 11h-4L24 11.5 18 18h-4z" fill="#c8921a"/><path d="M24 15l10 11h-4L24 19.5 18 26h-4z" fill="#c8921a"/><path d="M24 23l10 11h-4L24 27.5 18 34h-4z" fill="#c8921a"/><rect x="4" y="39" width="40" height="6" rx="1.5" fill="#c8921a"/></svg>`,
+  'opj-h': `<svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="2" y="2" width="44" height="44" rx="11" fill="#070b15" stroke="#1b6bff" stroke-width="1"/><rect x="7" y="19" width="34" height="10" rx="2" fill="#c8921a"/></svg>`,
+  'opj-n': `<svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="2" y="2" width="44" height="44" rx="11" fill="#070b15" stroke="#1b6bff" stroke-width="1"/><rect x="7" y="15" width="34" height="8" rx="2" fill="#c8921a"/><rect x="7" y="26" width="34" height="8" rx="2" fill="#c8921a"/></svg>`,
+  'opj-sp': `<svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="2" y="2" width="44" height="44" rx="11" fill="#070b15" stroke="#c8921a" stroke-width="0.9"/><polygon points="12,9 13.4,12.2 12,15.4 10.6,12.2" fill="#c8921a"/><polygon points="24,9 25.4,12.2 24,15.4 22.6,12.2" fill="#c8921a"/><polygon points="36,9 37.4,12.2 36,15.4 34.6,12.2" fill="#c8921a"/><path d="M11 38.5L13.5 22h21l2.5 16.5z" fill="#1b6bff" stroke="#e8eeff" stroke-width="0.7"/><rect x="9" y="19.5" width="30" height="4" rx="1" fill="#c8921a"/><ellipse cx="24" cy="40" rx="15" ry="4.8" fill="#03060d" stroke="#c8921a" stroke-width="1.1"/></svg>`
 };
+function gradeSvg(g) {
+  if (!g) return '';
+  const k = g.sk || g.name;
+  return GRADE_SVGS[k] || g.icon || '';
+}
 
+const PROFIL_STREAK_SVG='<svg class="pr-streak-ico" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M12 2c-1.2 3.2-5 4.8-5 9a5 5 0 1010 0c0-4.2-3.8-5.8-5-9z"/></svg>';
 
 /* ─── ENTRAÎNEMENT ORAL CNJ ─── */
 const ORAL_THEME_META = [
   { key: 'GAV', label: 'Garde à vue', emoji: '🔒' },
   { key: 'FLAGRANCE', label: 'Flagrance', emoji: '🚨' },
+  { key: 'Cadres transitoires', label: 'Cadres transitoires', emoji: '⏳' },
   { key: 'PERQUIZ', label: 'Perquisitions', emoji: '🔍' },
   { key: 'MANDATS', label: 'Mandats', emoji: '📋' },
   { key: 'COMMISSION', label: 'Commission rogatoire', emoji: '📄' },
@@ -304,29 +458,30 @@ const ORAL_THEME_META = [
   { key: 'REQS', label: 'Réquisitions', emoji: '📨' },
   { key: 'RESPONSABILITE', label: 'Responsabilité agent', emoji: '⚠️' }
 ];
+/* Banque orale : relecture juridique complète recommandée (OPJ formateur / magistrat). */
 const ORAL_QB = [
-  { id: 'oral_01', theme: 'GAV', q: 'Quelles sont les conditions de mise en garde à vue d\'une personne majeure ?', points: ['Infraction punie d\'une peine d\'emprisonnement d\'au moins un an', 'Indices graves et concordants de participation à l\'infraction', 'Nécessité des mesures de la GAV pour les besoins de l\'enquête'], articles: ['Art. 62 CPP', 'Art. 62-1 CPP'], niveau: 1, duree: 120 },
-  { id: 'oral_02', theme: 'GAV', q: 'Quelle est la durée maximale de la garde à vue et comment se prolonge-t-elle ?', points: ['24 heures en principe', 'Prolongation à 48 h par le procureur ou juge d\'instruction', 'Prolongation à 96 h pour certaines infractions (liste limitative) avec autorisation judiciaire'], articles: ['Art. 63 CPP', 'Art. 63-3 CPP', 'Art. 706-23 CPP'], niveau: 1, duree: 120 },
+  { id: 'oral_01', theme: 'GAV', q: 'Quelles sont les conditions de mise en garde à vue d\'une personne majeure ?', points: ['Cadre unique des conditions de placement : art. 62-2 CPP (infraction punie d\'emprisonnement + raisons plausibles + nécessité pour une des six finalités)', 'Décision écrite de l\'OPJ ; information immédiate du procureur (art. 63 et s. : durées, droits, prolongations — à ne pas confondre avec 62-2)', 'Ne pas citer à la place l\'art. 62 ou 62-1 CPP pour les conditions de la GAV'], articles: ['Art. 62-2 CPP'], niveau: 1, duree: 120 },
+  { id: 'oral_02', theme: 'GAV', q: 'Quelle est la durée maximale de la garde à vue et comment se prolonge-t-elle ?', points: ['Droit commun : 24 h + 24 h sur autorisation écrite et motivée du PR (48 h max) — art. 63-3 CPP', 'Jusqu\'à 96 h en criminalité organisée : art. 706-88 CPP (contrôle du JLD au-delà de 48 h) — ne pas répondre « 706-23 »', 'Terrorisme : jusqu\'à 144 h — art. 706-88-1 CPP'], articles: ['Art. 706-88 CPP', 'Art. 63-3 CPP', 'Art. 706-88-1 CPP'], niveau: 1, duree: 120 },
   { id: 'oral_03', theme: 'GAV', q: 'Quels sont les droits fondamentaux de la personne gardée à vue (art. 63-1 CPP) ?', points: ['Droit d\'être assisté d\'un avocat', 'Droit au silence', 'Droit d\'être informé des motifs et droits', 'Droit à un examen médical'], articles: ['Art. 63-1 CPP'], niveau: 1, duree: 90 },
   { id: 'oral_04', theme: 'GAV', q: 'Comment s\'effectue la notification de la garde à vue au procureur et aux proches ?', points: ['Information sans délai du procureur de la République', 'Information des proches si la personne le souhaite (sauf exceptions légales)', 'Mention dans la procès-verbal des notifications'], articles: ['Art. 63-1 CPP', 'Art. 63-4 CPP'], niveau: 2, duree: 120 },
-  { id: 'oral_05', theme: 'GAV', q: 'Quelles particularités pour la garde à vue d\'un mineur ?', points: ['Audition préalable du mineur par un magistrat dans les délais légaux', 'Présence obligatoire du titulaire de l\'autorité parentale ou d\'un représentant', 'Durées de GAV adaptées (règles spécifiques aux mineurs)'], articles: ['Art. 4 CPP', 'Art. 61-1 CPP', 'Art. 706-53 CPP'], niveau: 2, duree: 120 },
-  { id: 'oral_06', theme: 'GAV', q: 'Qu\'est-ce que l\'audition de « première comparution » et son lien avec la GAV ?', points: ['Première audition peut précéder ou suivre selon procédure', 'Distinction entre audition libre et GAV selon conditions légales', 'PV et mentions obligatoires'], articles: ['Art. 61 CPP', 'Art. 62 CPP'], niveau: 2, duree: 120 },
+  { id: 'oral_05', theme: 'GAV', q: 'Quelles particularités pour la garde à vue d\'un mineur ?', points: ['CJPM : retenue judiciaire 10–13 ans (durée limitée, magistrat) ; GAV 13–18 ans selon seuils CJPM (ex. peine ≥ 5 ans pour 13–16 ans)', 'Représentation légale / autorité parentale ; droits adaptés (avocat, médecin, information des représentants)', 'Séparation des mineurs et des majeurs en cellule ; ne pas confondre avec le régime des majeurs (conditions GAV = art. 62-2 CPP uniquement)'], articles: ['CJPM art. L413-4', 'CJPM art. L413-6', 'Art. 63-1 CPP'], niveau: 2, duree: 120 },
+  { id: 'oral_06', theme: 'GAV', q: 'Qu\'est-ce que l\'audition de « première comparution » et son lien avec la GAV ?', points: ['Audition libre ou mesure coercitive selon le cadre : ne pas confondre audition et GAV', 'Si GAV : conditions cumulatives de l\'art. 62-2 CPP uniquement (pas les art. 62 ou 62-1 pour les conditions de placement)', 'PV, notification des droits (art. 63-1 si GAV), information du procureur'], articles: ['Art. 61-1 CPP', 'Art. 62-2 CPP', 'Art. 63-1 CPP'], niveau: 2, duree: 120 },
   { id: 'oral_07', theme: 'GAV', q: 'Quand la garde à vue peut-elle être annulée ou entraîner des nullités ?', points: ['Vice de forme grave sur les droits (art. 63-1)', 'Durée dépassée sans prolongation valide', 'Conséquences sur la recevabilité des aveux selon jurisprudence'], articles: ['Art. 171 CPP', 'Art. 802 CPP'], niveau: 3, duree: 150 },
   { id: 'oral_08', theme: 'GAV', q: 'Quelles mesures peuvent accompagner la fin de garde à vue (mise en examen, contrôle judiciaire) ?', points: ['Orientation vers le parquet ou l\'instruction', 'Possibilité de garde à vue suivie de présentation au juge', 'Mesures alternatives selon qualification'], articles: ['Art. 72 CPP', 'Art. 137 CPP'], niveau: 3, duree: 150 },
   { id: 'oral_09', theme: 'FLAGRANCE', q: 'Qu\'est-ce que la flagrance au sens du CPP ?', points: ['Infraction en cours de commission', 'Infraction qui vient d\'être commise', 'Poursuite « hot pursuit » ou infraction considérée comme flagrante par la loi'], articles: ['Art. 53 CPP'], niveau: 1, duree: 90 },
   { id: 'oral_10', theme: 'FLAGRANCE', q: 'Quels sont les pouvoirs spécifiques de l\'OPJ en flagrance ?', points: ['Perquisitions sans consentement sous conditions (art. 56)', 'Interruption de communications sous conditions', 'Actes d\'enquête urgents'], articles: ['Art. 54 CPP', 'Art. 56 CPP', 'Art. 77 CPP'], niveau: 1, duree: 120 },
   { id: 'oral_11', theme: 'FLAGRANCE', q: 'Différence entre enquête préliminaire et flagrance pour l\'OPJ ?', points: ['Flagrance = cadre matériel précis (art. 53)', 'EP = enquête sous autorité du parquet', 'Certaines mesures réservées ou facilitées en flagrance'], articles: ['Art. 75 CPP', 'Art. 76 CPP'], niveau: 2, duree: 120 },
-  { id: 'oral_12', theme: 'FLAGRANCE', q: 'Peut-on procéder à une garde à vue en procédure de flagrance ?', points: ['Oui si conditions de l\'art. 62 réunies', 'Lien avec les indices graves et concordants', 'Formalismes identiques à l\'EP'], articles: ['Art. 62 CPP'], niveau: 2, duree: 90 },
+  { id: 'oral_12', theme: 'FLAGRANCE', q: 'Peut-on procéder à une garde à vue en procédure de flagrance ?', points: ['Oui si conditions cumulatives de l\'art. 62-2 CPP sont réunies', 'Peine d\'emprisonnement encourue + raisons plausibles + nécessité des mesures', 'Formalités identiques (notification droits art. 63-1, avis PR…)'], articles: ['Art. 62-2 CPP', 'Art. 63 CPP'], niveau: 2, duree: 90 },
   { id: 'oral_13', theme: 'FLAGRANCE', q: 'Qu\'est-ce que la « quasi-flagrance » ou infractions assimilées à la flagrance ?', points: ['Certaines hypothèses légales d\'équivalence', 'Intérêt pour pouvoir d\'intervention immédiat', 'Ne pas confondre avec simple soupçon'], articles: ['Art. 53 al. 4 CPP'], niveau: 3, duree: 120 },
   { id: 'oral_14', theme: 'FLAGRANCE', q: 'Que faire si la flagrance cesse avant la fin des actes ?', points: ['Adapter la procédure (EP, réquisitions)', 'Rechercher une autre base légale pour les actes', 'Conséquences sur la validité des perquisitions'], articles: ['Art. 76 CPP', 'Art. 56 CPP'], niveau: 3, duree: 150 },
-  { id: 'oral_15', theme: 'PERQUIZ', q: 'Quelles sont les conditions générales de validité d\'une perquisition au domicile ?', points: ['Consentement du résident ou décision judiciaire selon cas', '8h–21h sauf flagrance ou accord', 'Présence des garanties procédurales (PV, inventaire)'], articles: ['Art. 56 CPP', 'Art. 59 CPP'], niveau: 1, duree: 120 },
+  { id: 'oral_15', theme: 'PERQUIZ', q: 'Quelles sont les conditions générales de validité d\'une perquisition au domicile ?', points: ['Consentement du résident ou décision judiciaire selon cas', '6h–21h en droit commun (art. 59 CPP) sauf flagrance / CR / exceptions', 'Présence des garanties procédurales (PV, inventaire, art. 57 CPP si besoin)', 'Sans assentiment possible si délit ≥ 3 ans : autorisation écrite et motivée du JLD (Art. 76 al.4 CPP)'], articles: ['Art. 56 CPP', 'Art. 59 CPP', 'Art. 76 al.4 CPP'], niveau: 1, duree: 120 },
   { id: 'oral_16', theme: 'PERQUIZ', q: 'Perquisition au lieu professionnel : particularités ?', points: ['Protection du secret professionnel (avocat, médecin…)', 'Mesures d\'interface avec le juge', 'Modalités d\'accès aux données'], articles: ['Art. 56 CPP', 'Art. 56-1 CPP'], niveau: 2, duree: 120 },
   { id: 'oral_17', theme: 'PERQUIZ', q: 'Perquisition informatique : cadre et garanties ?', points: ['Saisie de données sous contrôle judiciaire selon hypothèses', 'Clonage, mots de passe, périmètre de fouille', 'Respect du secret des correspondances'], articles: ['Art. 706-95 et s. CPP'], niveau: 2, duree: 150 },
   { id: 'oral_18', theme: 'PERQUIZ', q: 'Différence entre perquisition et visite domiciliaire ?', points: ['Finalités et objets distincts', 'Régimes juridiques différents', 'Qui autorise et sous quelles conditions'], articles: ['Art. 76 CPP', 'Art. 59 CPP'], niveau: 2, duree: 120 },
   { id: 'oral_19', theme: 'PERQUIZ', q: 'Que risque une perquisition irrégulière ?', points: ['Nullité selon gravité (art. 171)', 'Exclusion de preuves possibles', 'Responsabilité disciplinaire'], articles: ['Art. 171 CPP'], niveau: 3, duree: 120 },
   { id: 'oral_20', theme: 'MANDATS', q: 'Qu\'est-ce qu\'un mandat d\'arrêt et qui peut le décerner ?', points: ['Décision de justice pour conduire une personne devant le juge', 'Juge d\'instruction ou juridiction compétente selon phase', 'Différence avec autre mandat (comparution, amener)'], articles: ['Art. 122 CPP', 'Art. 167 CPP'], niveau: 1, duree: 120 },
   { id: 'oral_21', theme: 'MANDATS', q: 'Mandat d\'amener : définition et usage ?', points: ['Contraindre à comparaître', 'Conditions de délivrance', 'Exécution par les OPJ / services habilités'], articles: ['Art. 122 CPP'], niveau: 1, duree: 90 },
-  { id: 'oral_22', theme: 'MANDATS', q: 'Mandat de recherche : en quoi diffère-t-il du mandat d\'arrêt ?', points: ['Objectif de localisation', 'Cadre européen EAW / mandats nationaux', 'Coopération internationale'], articles: ['Art. 694-1 et s. CPP'], niveau: 2, duree: 150 },
+  { id: 'oral_22', theme: 'MANDATS', q: 'Mandat de recherche national : en quoi diffère-t-il du mandat d\'arrêt (art. 131 CPP) ?', points: ['Mandat de recherche national → Art. 122-4 CPP (délivré par le PR si délit puni ≥ 3 ans)', 'MAE — Mandat d\'Arrêt Européen → Art. 695-11 CPP', '⚠️ Piège fréquent : Art. 694-1 CPP = entraide judiciaire internationale (pas le mandat national)'], articles: ['Art. 122-4 CPP', 'Art. 695-11 CPP'], niveau: 2, duree: 150 },
   { id: 'oral_23', theme: 'MANDATS', q: 'Comment exécuter un mandat sur le territoire (légitime défense, usage des moyens) ?', points: ['Identification des personnes', 'Respect des règles d\'usage de la force', 'Transmission au parquet / juge'], articles: ['Art. 78-2 CPP', 'Règlement intérieur'], niveau: 3, duree: 150 },
   { id: 'oral_24', theme: 'COMMISSION', q: 'Qu\'est-ce qu\'une commission rogatoire ?', points: ['Délégation d\'actes d\'instruction à un autre juge', 'Cadre de l\'instruction', 'Lettre rogatoire pour actes précis'], articles: ['Art. 81 CPP'], niveau: 1, duree: 90 },
   { id: 'oral_25', theme: 'COMMISSION', q: 'Comment un OPJ intervient-il sur commission rogatoire ?', points: ['Actes exécutés sous contrôle du juge mandant', 'PV et transmission des résultats', 'Limites aux missions prescrites'], articles: ['Art. 81 CPP', 'Art. 151 CPP'], niveau: 2, duree: 120 },
@@ -394,14 +549,70 @@ const ORAL_QB = [
   { id: 'oral_87', theme: 'RESPONSABILITE', q: 'Quelle est la différence entre faute de service et faute personnelle de l\'OPJ ?', points: ['Faute de service : responsabilité de l\'État (administrative)', 'Faute personnelle détachable : responsabilité pénale individuelle', 'Cumul possible dans certains cas'], articles: ['Jurisprudence CE'], niveau: 2, duree: 120 },
   { id: 'oral_88', theme: 'RESPONSABILITE', q: 'Quel est le rôle de l\'IGPN dans le contrôle de la police ?', points: ['Enquêtes administratives sur les manquements professionnels', 'Enquêtes judiciaires sous l\'autorité du parquet', 'Ne peut pas prononcer de sanctions pénales directement'], articles: ['CSI'], niveau: 2, duree: 120 },
   { id: 'oral_89', theme: 'RESPONSABILITE', q: 'Un OPJ peut-il être poursuivi pour violences en opération ?', points: ['Oui si usage disproportionné de la force', 'Art. 122-5 CP : légitime défense comme fait justificatif', 'Art. L435-1 CSI : cadre légal de l\'usage des armes'], articles: ['Art. 122-5 CP', 'Art. L435-1 CSI'], niveau: 3, duree: 150 },
-  { id: 'oral_90', theme: 'RESPONSABILITE', q: 'Quelles sanctions disciplinaires peut subir un OPJ ?', points: ['Avertissement, blâme, exclusion temporaire', 'Suspension ou retrait de l\'habilitation OPJ par la chambre de l\'instruction', 'Sanctions administratives distinctes des sanctions pénales'], articles: ['Art. 13 CPP', 'Statut PN'], niveau: 2, duree: 120 }
+  { id: 'oral_90', theme: 'RESPONSABILITE', q: 'Quelles sanctions disciplinaires peut subir un OPJ ?', points: ['Avertissement, blâme, exclusion temporaire', 'Suspension ou retrait de l\'habilitation OPJ par la chambre de l\'instruction', 'Sanctions administratives distinctes des sanctions pénales'], articles: ['Art. 13 CPP', 'Statut PN'], niveau: 2, duree: 120 },
+  { id: 'oral_ct_01', theme: 'Cadres transitoires', q: 'Dans quelles conditions ouvre-t-on une enquête pour mort suspecte ou cause inconnue ?', points: ['Découverte d\'un cadavre dont la cause de mort est inconnue, suspecte ou violente', 'OPJ informe immédiatement le PR (Art. 74 CPP)', 'Investigations pour établir les causes et circonstances du décès', 'Réquisitions pour autopsie possibles (expert médico-légal)', 'GAV possible si nécessaire dans ce cadre'], articles: ['Art. 74 CPP'], niveau: 2, duree: 120 },
+  { id: 'oral_ct_02', theme: 'Cadres transitoires', q: 'Quelle est la procédure en cas de disparition inquiétante ?', points: ['Disparition d\'un mineur ou d\'un majeur protégé (Art. 74-1 CPP)', 'Ou toute personne dans des circonstances inquiétantes ou suspectes laissant craindre une infraction', 'OPJ informe le PR sans délai', 'Investigations immédiates : dernier lieu connu, témoins, téléphonie, CCTV', 'Plan alerte enlèvement si conditions réunies'], articles: ['Art. 74-1 CPP'], niveau: 2, duree: 120 },
+  { id: 'oral_ct_03', theme: 'Cadres transitoires', q: 'Comment agit l\'OPJ face à une personne grièvement blessée dont la vie est en danger ?', points: ['Cadre Art. 74 al.6 CPP : personne grièvement blessée dont les jours sont en danger', 'OPJ peut procéder à toutes constatations utiles', 'Investigations pour déterminer les circonstances', 'Avis immédiat au PR', 'Si infraction caractérisée : ouverture du cadre flagrance ou préliminaire selon les éléments'], articles: ['Art. 74 al.6 CPP'], niveau: 2, duree: 120 },
+
+  /* ── Programme OPJ — compléments par module (oral_mNN_XX) ── */
+  { id: 'oral_m01_01', theme: 'INSTRUCTION', q: 'Qu\'est-ce que l\'action publique et en quoi diffère-t-elle de l\'action civile ?', points: ['Action publique : mise en mouvement de la répression pénale par les autorités compétentes (ministère public, partie civile dans les cas prévus)', 'Action civile : réparation du préjudice devant la juridiction répressive (demandes devant le tribunal correctionnel ou la cour d\'assises selon les cas)', 'L\'action publique peut s\'éteindre par prescription, amnistie, décision de poursuite ou de classement, sans préjuger des droits civils'], articles: ['Art. 1 CPP', 'Art. 2 CPP', 'Art. 3 CPP'], niveau: 2, duree: 120 },
+  { id: 'oral_m01_02', theme: 'INSTRUCTION', q: 'Quelles décisions le procureur de la République peut-il prendre à l\'issue de l\'enquête (grandes voies) ?', points: ['Classer sans suite (art. 40-1 CPP) si les infractions ne sont pas suffisamment caractérisées ou si les poursuites sont inopportunes', 'Engager des poursuites (citations, renvois, réquisitions devant le juge d\'instruction ou le tribunal selon les cas)', 'Proposer ou ordonner des mesures alternatives aux poursuites (art. 41-1 CPP : rappel à la loi, médiation, etc. ; art. 41-2 composition pénale sous conditions)', 'Le PR dirige l\'enquête préliminaire et l\'enquête de flagrance sur le plan juridique'], articles: ['Art. 40 CPP', 'Art. 40-1 CPP', 'Art. 41-1 CPP', 'Art. 41-2 CPP'], niveau: 2, duree: 120 },
+  { id: 'oral_m01_03', theme: 'NULLITES', q: 'Comment distinguer nullités « automatiques », nullités « substantielles » et nullités d\'intérêt privé ?', points: ['Nullité « textuelle » (art. 171 CPP) : sanction attachée par la loi à l\'inobservation d\'une formalité — nullité sans preuve de grief dans les cas visés', 'Nullité « substantielle » (art. 802 CPP) : irrégularité susceptible d\'avoir porté atteinte aux intérêts de la partie : grief à établir', 'Nullités d\'intérêt privé : certaines irrégularités ne peuvent être invoquées que par la personne concernée (prévenu, partie civile) et non par le ministère public — à ne pas confondre avec l\'ordre public procédural', 'Art. 803 et suivants CPP : cadre des conclusions en nullité devant la cour d\'assises (nullités invoquées par les parties)'], articles: ['Art. 171 CPP', 'Art. 802 CPP', 'Art. 803 CPP'], niveau: 2, duree: 120 },
+  { id: 'oral_m01_04', theme: 'QUALIF', q: 'Quels sont les délais ordinaires de prescription de l\'action publique pour crime, délit et contravention ?', points: ['Crimes : prescription vingt ans (art. 133-1 CP) — nuances pour crimes contre l\'humanité et certaines infractions spéciales', 'Délit : prescription six ans (art. 133-2 CP) sauf dispositions spéciales plus courtes ou plus longues', 'Contravention : prescription trois ans (art. 133-3 CP)', 'Point d\'articulation avec l\'interruption et la suspension (art. 133-4 à 133-6 CP)'], articles: ['Art. 133-1 CP', 'Art. 133-2 CP', 'Art. 133-3 CP'], niveau: 2, duree: 120 },
+  { id: 'oral_m01_05', theme: 'QUALIF', q: 'Qu\'est-ce que la tentative et la complicité en droit pénal ?', points: ['Tentative (art. 121-4 CP) : commencement d\'exécution manqué pour cause indépendante de la volonté — peines réduites sauf cas où la tentative est punie au même titre que l\'infraction consommée', 'Complicité (art. 121-7 CP) : aide ou assistance à l\'infraction ; fourniture moyens, provocation, intelligence selon les cas', 'Distinction instigateur / complice / coauteur selon le rôle dans les faits', 'Complicité de contravention : conditions restrictives (art. 121-7 al. 3 CP)'], articles: ['Art. 121-4 CP', 'Art. 121-7 CP'], niveau: 2, duree: 120 },
+
+  { id: 'oral_m02_01', theme: 'FLAGRANCE', q: 'Comment l\'article 18 CPP organise-t-il les déplacements des OPJ hors de leur ressort territorial (extension de compétence) ?', points: ['Al. 1 : compétence dans les limites territoriales où l\'OPJ exerce habituellement ses fonctions', 'Al. 2 : OPJ temporairement mis à disposition d\'un autre service = même compétence territoriale que les OPJ du service d\'accueil', 'Al. 3 : transport sur **tout le territoire national** pour enquêter (auditions, perquisitions, saisies) après information du **procureur saisi de l\'enquête** ou du **juge d\'instruction** ; assistance d\'un OPJ territorialement compétent si le magistrat le décide ; information du procureur du TJ du lieu des actes', 'Cas **limitrophe** : **aucune information préalable** requise si le déplacement reste dans un ressort limitrophe au sien — **Paris** et **Hauts-de-Seine, Seine-Saint-Denis, Val-de-Marne** assimilés à un seul département (fin al. 3)', 'À relier à l\'information du procureur en flagrance (art. 53 CPP)'], articles: ['Art. 18 CPP', 'Art. 53 CPP'], niveau: 2, duree: 120 },
+  { id: 'oral_m02_02', theme: 'FLAGRANCE', q: 'Quelle est la durée maximale de l\'enquête de flagrance et comment la prolonge-t-on ?', points: ['Durée initiale : huit jours sans discontinu à compter de la constatation de la flagrance (art. 53 CPP)', 'Prolongation : huit jours supplémentaires possibles par décision écrite du procureur si enquêtes nécessaires à la manifestation de la vérité pour crime ou délit puni d\'au moins cinq ans d\'emprisonnement ne peuvent être différées (art. 53 CPP)', 'Au-delà : les actes relèvent des règles de l\'enquête préliminaire sous peine de nullité', 'Ne pas confondre avec la seule durée de la garde à vue (régime des art. 63 et s. CPP)'], articles: ['Art. 53 CPP'], niveau: 2, duree: 120 },
+
+  { id: 'oral_m03_01', theme: 'PERQUIZ', q: 'En enquête préliminaire, quel est le régime de l\'assentiment pour perquisition au domicile (art. 76 CPP) ?', points: ['Principe : perquisition, visite domiciliaire ou saisie sans assentiment exprès de l\'occupant est interdite', 'Assentiment : déclaration écrite de la main de l\'intéressé ; si la personne ne sait pas écrire, mention au procès-verbal (art. 76 al. 2 CPP)', 'Exception : crime ou délit puni d\'au moins cinq ans — le juge des libertés peut autoriser l\'opération sans assentiment sur réquisition motivée du procureur (art. 76 al. 4 CPP)', 'Distinction avec le régime de la flagrance (art. 56 et s. CPP)'], articles: ['Art. 76 CPP'], niveau: 2, duree: 120 },
+  { id: 'oral_m03_02', theme: 'INSTRUCTION', q: 'Quelle est la durée maximale de rétention d\'un témoin qui n\'est pas suspect (art. 78 CPP) ?', points: ['Personne à l\'encontre de laquelle il n\'existe pas de raisons plausibles de soupçonner qu\'elle a commis une infraction : rétention le temps strictement nécessaire à son audition', 'Plafond : quatre heures (art. 78 CPP)', 'Si des indices apparaissent : placement éventuel en garde à vue sous le seul régime de l\'art. 62-2 CPP si conditions réunies', 'Formalités d\'audition et PV conformes aux règles d\'enquête'], articles: ['Art. 78 CPP'], niveau: 2, duree: 120 },
+  { id: 'oral_m03_03', theme: 'MANDATS', q: 'Qu\'est-ce que le mandat de recherche en enquête préliminaire ou de flagrance et qui le décerne ?', points: ['Ordre donné à la force publique de rechercher une personne et de la placer en garde à vue si elle est localisée', 'Décerné par le procureur de la République lorsque les nécessités de l\'enquête sur crime ou délit flagrant puni d\'au moins trois ans l\'exigent et qu\'il existe des raisons plausibles de soupçon (art. 70 CPP)', 'Ne pas confondre avec le mandat d\'arrêt délivré par le juge d\'instruction (art. 122 CPP) ni avec le mandat de recherche national (art. 122-4 CPP)', 'Exclusions : personne déjà mise en examen, témoin assisté ou visée par réquisitoire selon le texte'], articles: ['Art. 70 CPP', 'Art. 122 CPP'], niveau: 2, duree: 120 },
+
+  { id: 'oral_m04_01', theme: 'COMMISSION', q: 'Quelles mentions et formalismes doit respecter une commission rogatoire délivrée par le juge d\'instruction ?', points: ['Décision écrite du juge d\'instruction désignant l\'officier ou agent de police judiciaire ou le juge commis', 'Mention de la juridiction, date, signature et sceau (formalisme des actes d\'instruction — arts. 81 et 151 CPP et suite)', 'Périmètre précis des actes délégués et délai de renvoi des pièces ; à défaut de délai fixé, transmission sous huit jours en fin d\'opérations (art. 151 CPP)', 'Une commission incomplète ou vague peut entraîner nullité ou actes hors mandat'], articles: ['Art. 81 CPP', 'Art. 151 CPP'], niveau: 2, duree: 120 },
+  { id: 'oral_m04_02', theme: 'COMMISSION', q: 'Quels actes l\'OPJ ne peut-il pas exécuter sur simple commission rogatoire (limites de l\'art. 152 CPP) ?', points: ['L\'OPJ exécute la CR dans les limites prescrites avec les pouvoirs du juge d\'instruction sauf réserves légales (art. 152 CPP)', 'Interdiction d\'interroger ou de confronter une personne **mise en examen**', 'Interdiction d\'auditionner la partie civile ou le **témoin assisté**, sauf à la demande de ceux-ci', 'Mandats d\'arrêt, expertise ordonnée par le JI, actes réservés au magistrat : hors délégation sauf texte spécial', 'Dépassement du mandat : risque de nullité (art. 171 CPP)'], articles: ['Art. 152 CPP', 'Art. 171 CPP'], niveau: 2, duree: 120 },
+  { id: 'oral_m04_03', theme: 'COMMISSION', q: 'Après exécution d\'une commission rogatoire par l\'OPJ, que doit-il transmettre au juge mandant ?', points: ['Procès-verbaux et pièces afférentes aux actes accomplis dans le délai fixé par le juge, ou à défaut dans les huit jours (art. 151 CPP)', 'Obligation de produire les **originaux** des scellés et pièces saisies lorsque la loi ou le juge l\'exigent — copies certifiées seulement si le mandat le prévoit', 'Rapport fidèle et complet : pas d\'actes « en plus » sans nouveau titre', 'Transmission traçable au dossier d\'instruction'], articles: ['Art. 151 CPP', 'Art. 152 CPP'], niveau: 2, duree: 120 },
+
+  { id: 'oral_m07_01', theme: 'QUALIF', q: 'Comment distinguer la « bande organisée » (art. 132-71 CP) et l\'« association de malfaiteurs » (art. 450-1 CP) ?', points: ['Bande organisée : groupement ou entente en vue de la préparation caractérisée par des faits matériels d\'**une ou plusieurs infractions punies d\'au moins cinq ans** d\'emprisonnement (art. 132-71 CP) — souvent circonstance aggravante d\'une infraction de fond', 'Association de malfaiteurs : groupement ou entente en vue de la préparation, caractérisée par des faits matériels, d\'**un crime ou d\'un délit** (sans seuil des cinq ans) — infraction autonome (art. 450-1 CP)', 'Sanctions et procédures spéciales (706-73 CPP) liées à la criminalité organisée pour la bande organisée', 'Ne pas confondre avec la simple « réunion » (circ. art. 132-71 vs réunion d\'infractions)'], articles: ['Art. 132-71 CP', 'Art. 450-1 CP'], niveau: 2, duree: 120 },
+  { id: 'oral_m07_02', theme: 'TSE', q: 'Qu\'est-ce qu\'une JIRS et sur quels textes s\'appuie-t-elle ?', points: ['Juridiction interrégionale spécialisée : compétence pour certaines infractions graves (criminalité organisée, délinquance économique et financière selon les cas)', 'Compétence matérielle notamment infractions relevant des art. 706-73, 706-73-1 et 706-74 CPP', 'Compétence territoriale et dessaisissement au profit de la JIRS encadrés par les art. 706-75 et suivants CPP (ex. 706-77 : réquisitions du parquet)', 'L\'OPJ peut être amené à transmettre des dossiers ou à exécuter des actes dans ce cadre sous direction du parquet et du juge'], articles: ['Art. 706-73 CPP', 'Art. 706-75 CPP', 'Art. 706-77 CPP'], niveau: 2, duree: 120 },
+  { id: 'oral_m07_03', theme: 'TSE', q: 'Qu\'encadre l\'article 706-102-1 CPP (captation de données informatiques) ?', points: ['Technique d\'enquête en matière de criminalité et délinquance organisées (champ des art. 706-73 et 706-73-1 CPP)', 'Autorisation par ordonnance motivée du **juge d\'instruction**, après avis du procureur ; mise en œuvre sous contrôle du JI', 'Finalité : accès, enregistrement, conservation ou transmission de données informatiques — y compris captation à l\'écran ou saisies clavier selon le dispositif technique autorisé', 'Fichiers et traitements ultérieurs encadrés par décret (protection des données)', 'Ne pas confondre avec la simple perquisition informatique (art. 706-95 et s. CPP)'], articles: ['Art. 706-102-1 CPP', 'Art. 706-73 CPP'], niveau: 2, duree: 120 },
+
+  { id: 'oral_m08_01', theme: 'GAV', q: 'Peut-on placer à nouveau une personne en garde à vue pour les mêmes faits / la même enquête ?', points: ['Principe : une seule garde à vue continue pour une même enquête ; prolongations selon art. 63-3 et régimes spéciaux (706-88, terrorisme)', 'Notification d\'un **nouveau chef** d\'infraction en cours de GAV ne crée pas une nouvelle garde à vue distincte (jurisprudence sur l\'art. 65 CPP)', 'Nouvelle GAV possible si **enquête distincte** ou conditions matérielles nouvelles et autonomes — toujours sous le cumul de l\'art. 62-2 CPP', 'Chaque placement : notification des droits, avis au procureur, durées plafonnées'], articles: ['Art. 62-2 CPP', 'Art. 63 CPP', 'Art. 65 CPP'], niveau: 2, duree: 120 },
+  { id: 'oral_m08_02', theme: 'GAV', q: 'Quels contrôles externes s\'exercent sur les conditions de garde à vue ?', points: ['Procureur de la République : information et contrôle des placements, prolongations, suites à donner (art. 63 et s. CPP)', 'Contrôleur général des lieux de privation de liberté (CGLPL) : visites et recommandations — loi organique n° 2007-1545 du 29 octobre 2007', 'Parlementaires : députés, sénateurs (et selon le texte MEP) — droit de visite des locaux de GAV (art. 719 CPP)', 'Comité européen pour la prévention de la torture (CPT) : visites en application de la Convention européenne du 26 novembre 1987', 'Juge des libertés : prolongations au-delà de certains seuils (706-88, etc.)'], articles: ['Art. 63 CPP', 'Art. 719 CPP', 'Loi n° 2007-1545 du 29 octobre 2007'], niveau: 2, duree: 120 },
+  { id: 'oral_m08_03', theme: 'GAV', q: 'Qui peut autoriser le report de la présence de l\'avocat lors d\'auditions en garde à vue et pour combien de temps ?', points: ['Décision **écrite et motivée** par le procureur de la République ou le juge d\'instruction selon les cas (art. 63-4-3 CPP)', 'Report maximal de **douze heures** par le procureur ou le juge d\'instruction pour raisons impérieuses tenant aux circonstances de l\'enquête', 'Au-delà de douze heures jusqu\'à **vingt-quatre heures** : compétence du **juge des libertés et de la détention** pour crimes ou délits punis d\'au moins cinq ans d\'emprisonnement (art. 63-4-3 CPP)', 'Le report doit être circonstancié — contrôle de proportionnalité'], articles: ['Art. 63-4-3 CPP'], niveau: 2, duree: 120 },
+
+  { id: 'oral_m11_01', theme: 'PERQUIZ', q: 'Quels lieux ou personnalités bénéficient d\'une protection renforcée lors des perquisitions (hors cadre ordinaire) ?', points: ['Locaux diplomatiques et consulaires : inviolabilité des locaux mission diplomatique (Conventions de Vienne sur les relations diplomatiques et consulaires — ne pas perquisitionner sans cadre international)', 'Assemblée nationale / Sénat : perquisitions au Palais-Bourbon ou au Luxembourg sous conditions du droit des assemblées (lois organiques — autorisation souvent requise)', 'Établissements d\'enseignement : coordination avec l\'autorité administrative compétente selon les textes spéciaux', 'À distinguer des règles procédurales ordinaires art. 56 à 59 CPP'], articles: ['Art. 56 CPP', 'Art. 59 CPP', 'Convention de Vienne sur les relations diplomatiques du 18 avril 1961'], niveau: 2, duree: 120 },
+  { id: 'oral_m11_02', theme: 'PERQUIZ', q: 'Quelles sont les règles spéciales de perquisition chez l\'avocat, la presse et le médecin ?', points: ['Avocat : art. 56-1 CPP — présence d\'un magistrat et du représentant de l\'ordre des avocats ; secret professionnel ; procédure 56-1-1 si documents défense', 'Presse : art. 56-2 CPP — magistrat habilité, représentant de la profession, limites liées à la liberté d\'information', 'Médecin ou professionnel de santé : art. 56-3 CPP — magistrat + représentant de l\'ordre ou de la caisse / autorité compétente selon le cas', 'Objectif : concilier enquête et droits fondamentaux'], articles: ['Art. 56-1 CPP', 'Art. 56-2 CPP', 'Art. 56-3 CPP'], niveau: 2, duree: 120 },
+  { id: 'oral_m11_03', theme: 'PERQUIZ', q: 'La fouille d\'un véhicule sur la voie publique est-elle soumise aux « heures légales » des perquisitions domiciliaires (6h–21h) ?', points: ['Non pour le véhicule **sur la voie publique** et n\'ayant pas le caractère de domicile : contrôles et fouilles encadrés notamment par les art. 78-2 et suivants CPP (contrôle d\'identité, visites)', 'Les **heures légales** de l\'art. 59 CPP visent surtout les perquisitions **domiciliaires** et assimilées', 'Fouille sur réquisition du procureur dans les hypothèses limitatives (art. 78-2-2 CPP : stupéfiants, armes, terrorisme, etc.) avec durée plafonnée', 'Dès lors que le véhicule constitue un **domicile** (aménagé pour y vivre), le régime domiciliaire s\'applique'], articles: ['Art. 59 CPP', 'Art. 78-2 CPP', 'Art. 78-2-2 CPP'], niveau: 2, duree: 120 },
+  { id: 'oral_m11_04', theme: 'PERQUIZ', q: 'Lors d\'une perquisition, que faire en cas de découverte d\'objets non visés par le titre exécutoire ?', points: ['Principe de **spécialité** de la perquisition : on ne saisit que ce qui concerne l\'infraction visée et les infractions connexes selon la loi', 'Découverte fortuite d\'éléments révélant une autre infraction : mentions précises au procès-verbal ; saisie éventuelle si texte l\'autorise (art. 56 et s. CPP, jurisprudence)', 'Documents relevant du secret défense ou de la défense (56-1-1) : procédure renforcée', 'Ne pas étendre arbitrairement le périmètre sans nouveau titre ou cadre légal'], articles: ['Art. 56 CPP', 'Art. 56-1-1 CPP'], niveau: 2, duree: 120 },
+
+  { id: 'oral_m12_01', theme: 'REQS', q: 'Quels sont les principaux fichiers ou traitements souvent visés par les réquisitions (FPR, TAJ, FNAEG, etc.) ?', points: ['**FPR** : fichier des personnes recherchées (réquisitions pour inscription, mise à jour, consultation selon habilitation — code de la sécurité intérieure / décrets)', '**TAJ** : traitement d\'antécédents judiciaires (bulletin n° 1, 2, 3 selon les cas)', '**FNAEG** : fichier national des empreintes génétiques (conditions d\'accès et d\'inscription strictes)', '**FIJAISV** : fichier automatisé des auteurs d\'infractions sexuelles violentes ; **SALVAC** : schémas corporels ; **FAED** : empreintes digitales ; autres traitements listés au CSI', 'Toujours distinguer réquisition **art. 60 CPP** (flagrance, initiative OPJ) et **art. 77-1 / 77-1-1 CPP** (préliminaire, autorisation du procureur)'], articles: ['Art. 60 CPP', 'Art. 77-1 CPP', 'Art. 77-1-1 CPP', 'Code de la sécurité intérieure'], niveau: 2, duree: 120 },
+
+  { id: 'oral_m13_01', theme: 'TSE', q: 'Quelles durées maximales pour la géolocalisation selon les art. 230-32 à 230-33 CPP ?', points: ['Autorisation du procureur : **huit jours** lorsque l\'infraction n\'entre pas dans le champ particulier du crime / délinquance organisée (230-33 CPP)', 'Autorisation du procureur : **quinze jours** pour les crimes, délits punis d\'au moins trois ans **ou** infractions des art. 706-73 ou 706-73-1 CPP (criminalité organisée)', 'Prolongation par le **juge des libertés et de la détention** : **un mois** renouvelable dans les mêmes formes (plafond global d\'un an, deux ans pour 706-73 / 706-73-1)', 'Décisions écrites et motivées par les circonstances de fait'], articles: ['Art. 230-32 CPP', 'Art. 230-33 CPP'], niveau: 2, duree: 120 },
+
+  { id: 'oral_m14_01', theme: 'LIBERTES', q: 'Quel est le cadre des contrôles d\'identité aux articles 78-1 à 78-6 CPP ?', points: ['78-1 : contrôle sur réquisition écrite du procureur (liste de personnes ou périmètre) pour infractions graves', '78-2 : contrôle sur initiative OPJ si une infraction vient d\'être commise / risque de destruction de preuves / recherche auteur flagrance', '78-3 à 78-6 : fouilles de véhicules, sacs, palpations de sécurité, périmètres de protection, modalités et proportionnalité', 'Toujours : identification de l\'agent, respect de la dignité et de la non-discrimination'], articles: ['Art. 78-1 CPP', 'Art. 78-2 CPP', 'Art. 78-3 CPP', 'Art. 78-4 CPP', 'Art. 78-5 CPP', 'Art. 78-6 CPP'], niveau: 2, duree: 120 },
+  { id: 'oral_m14_02', theme: 'INTERNATIONAL', q: 'Étrangers en zone d\'attente et en rétention : quels ordres de grandeur de durée (majeurs) ?', points: ['**Zone d\'attente** (refus d\'entrée, aéroport, etc.) : maintien initial encadré puis prolongations par le juge des libertés — blocs de **jusqu\'à huit jours** possibles selon les prolongations (L. 221-3 à L. 221-5 CESEDA)', 'Durées et contrôle judiciaire stricts ; information écrite de la personne', '**Rétention administrative** d\'éloignement : durées plafonnées avec **contrôle du juge des libertés** (L. 551-1 et s. CESEDA) — schéma distinct de la GAV pénale', 'Le régime du **maintien à disposition de la justice** pour majeur après certaines décisions est prévu au livre VII CESEDA (ex. L. 743-19 — se tenir au jour du texte en vigueur pour les durées exactes)', 'Les **mineurs** ne sont pas soumis aux mêmes régimes de rétention administrative'], articles: ['L. 221-3 CESEDA', 'L. 221-4 CESEDA', 'L. 551-1 CESEDA', 'L. 743-19 CESEDA'], niveau: 2, duree: 120 },
+  { id: 'oral_m14_03', theme: 'RESPONSABILITE', q: 'Quelles sont les catégories d\'armes au sens du code de la sécurité intérieure ?', points: ['**Catégorie A** : armes de guerre, munitions et certaines armes prohibées', '**Catégorie B** : armes soumises à autorisation (détention, port, achat)', '**Catégorie C** : armes soumises à déclaration', '**Catégorie D** : armes accessibles selon conditions (vente libre sous conditions d\'âge pour certaines)', 'Référence aux textes réglementaires pour le détail des listes (décrets d\'application)'], articles: ['Art. L. 311-1 CSI', 'Art. L. 311-2 CSI'], niveau: 2, duree: 120 },
+  { id: 'oral_m14_04', theme: 'LIBERTES', q: 'Quelles bases légales pour l\'état d\'urgence et les dispositifs type Vigipirate (notions) ?', points: ['**État d\'urgence** : loi n° 55-385 du 3 avril 1955 (cadre, contrôle du Parlement et du Conseil constitutionnel selon les périodes)', '**État de siège** : art. 36 Constitution (cas exceptionnels, autorité militaire)', '**Vigipirate** : plan interministériel de vigilance, de prévention et de protection piloté au niveau gouvernemental (niveaux vigilance / sécurité renforcée / urgence attentat) — mise en œuvre opérationnelle par préfets et services ; pas un article isolé du CPP à citer à l\'oral', 'L\'OPJ applique le droit pénal de procédure habituel (contrôles art. 78-1 et s., réquisitions, etc.) sans confondre mesure de sûreté administrative et preuve pénale'], articles: ['Loi n° 55-385 du 3 avril 1955', 'Art. 36 Constitution'], niveau: 2, duree: 120 }
 ];
+if(typeof window!=='undefined')window.ORAL_QB=ORAL_QB;
+
+const ORAL_ARTICLE_INDEX=(function buildOralArticleIndex(){
+  const idx={};
+  ORAL_QB.forEach(q=>{
+    (q.articles||[]).forEach(a=>{
+      const k=String(a).replace(/\s/g,'').toLowerCase();
+      if(!idx[k])idx[k]=[];
+      if(!idx[k].includes(q.id))idx[k].push(q.id);
+    });
+  });
+  return idx;
+})();
 
 /* ─── STATE ─── */
 function defaultState(){
   return{
     v:STATE_VERSION,page:'onboarding',
-    user:{name:'OPJ',xp:0,streak:0,lastActivity:null,sessionsDone:0,isPRO:false,examDate:'2026-06',streakRecord:0},
+    user:{name:'OPJ',xp:0,streak:0,lastActivity:null,sessionsDone:0,isPRO:false,examDate:'2026-06-15',streakRecord:0},
     qcm:{cards:{},queue:[],idx:0,answered:null,stats:{ok:0,ko:0,xp:0},done:false,ci:false},
     rev:{tab:'reviser'},lessons:{},fiches:{},
     settings:{haptics:true},
@@ -409,9 +620,12 @@ function defaultState(){
     shield:{count:1,lastEarned:null},
     activity:{},blitzBest:0,crDone:0,tq:0,dq:0,tcDone:0,dcDone:0,cv:0,
     perfectSessions:0,classifDone:0,lastBgAt:null,
-    lightMode:false,annalesDone:{},pfs:{},fs:{},badgeUiSeen:{},_badgeUiBackfill:false,
+    lightMode:false,annalesDone:{},pfs:{},fs:{},flashFsrs:{},fsDueSession:null,badgeUiSeen:{},_badgeUiBackfill:false,
     printed:{},printDone:0,isPro:false,
     oral:{done:{},scores:{}},
+    examHistory:[],
+    earlyBirdCount:0,
+    pvDone:0,
     milestones:{},
     placementDone:false,placementScore:{},
     errorLog:{}
@@ -432,6 +646,8 @@ function loadState(){
         if(prev.qcm?.cards)S.qcm.cards=prev.qcm.cards;
         if(prev.fiches)S.fiches=prev.fiches;
         if(prev.fs)S.fs=prev.fs;
+        if(prev.flashFsrs)S.flashFsrs=prev.flashFsrs;
+        if(prev.fsDueSession)S.fsDueSession=prev.fsDueSession;
         if(prev.pfs)S.pfs=prev.pfs;
         if(prev.printed)S.printed=prev.printed;
         if(prev.printDone)S.printDone=prev.printDone;
@@ -444,6 +660,10 @@ function loadState(){
         if(prev.badges)S.badges=prev.badges;
         if(prev.activity)S.activity=prev.activity;
         if(prev.missions2)S.missions2=prev.missions2;
+        if(prev.examHistory)S.examHistory=prev.examHistory;
+        else S.examHistory=[];
+        if(prev.earlyBirdCount!==undefined)S.earlyBirdCount=prev.earlyBirdCount;
+        if(prev.pvDone!==undefined)S.pvDone=prev.pvDone;
         S.isPro=prev.isPro||prev.user?.isPRO||false;
         S.page='home';save();loaded=true;
       } else {
@@ -452,7 +672,7 @@ function loadState(){
         if(!S._badgeUiBackfill){S._badgeUiBackfill=true;Object.keys(S.badges||{}).forEach(id=>{S.badgeUiSeen[id]=1;});try{save();}catch(e){}}
         if(!S.shield)S.shield={count:1,lastEarned:null};
         if(!S.activity)S.activity={};if(!S.defi)S.defi={lastDate:'',done:false};
-        if(!S.pfs)S.pfs={};if(!S.fs)S.fs={};if(!S.annalesDone)S.annalesDone={};
+        if(!S.pfs)S.pfs={};if(!S.fs)S.fs={};if(!S.flashFsrs)S.flashFsrs={};if(S.fsDueSession===undefined)S.fsDueSession=null;if(!S.annalesDone)S.annalesDone={};
         if(!S.printed)S.printed={};if(!S.printDone)S.printDone=0;
         if(S.isPro===undefined)S.isPro=S.user?.isPRO||false;
         if(!S.oral)S.oral={done:{},scores:{}};
@@ -460,6 +680,9 @@ function loadState(){
         if(!S.placementDone)S.placementDone=false;
         if(!S.placementScore)S.placementScore={};
         if(!S.errorLog)S.errorLog={};
+        if(!S.examHistory)S.examHistory=[];
+        if(S.earlyBirdCount===undefined)S.earlyBirdCount=0;
+        if(S.pvDone===undefined)S.pvDone=0;
         loaded=true;
       }
     }
@@ -475,6 +698,8 @@ function loadState(){
         if(d.qcm?.cards)S.qcm.cards=d.qcm.cards;
         if(d.fiches)S.fiches=d.fiches;
         if(d.fs)S.fs=d.fs;
+        if(d.flashFsrs)S.flashFsrs=d.flashFsrs;
+        if(d.fsDueSession)S.fsDueSession=d.fsDueSession;
         if(d.pfs)S.pfs=d.pfs;
         if(d.printed)S.printed=d.printed;
         if(d.printDone)S.printDone=d.printDone;
@@ -487,6 +712,10 @@ function loadState(){
         if(d.badges)S.badges=d.badges;
         if(d.activity)S.activity=d.activity;
         if(d.missions2)S.missions2=d.missions2;
+        if(d.examHistory)S.examHistory=d.examHistory;
+        else S.examHistory=[];
+        if(d.earlyBirdCount!==undefined)S.earlyBirdCount=d.earlyBirdCount;
+        if(d.pvDone!==undefined)S.pvDone=d.pvDone;
         S.isPro=d.isPro||d.user?.isPRO||false;
         S.page='home';
         save();
@@ -501,13 +730,19 @@ function save(){
   const now=Date.now();
   if(now-_lastSave>300){
     _lastSave=now;
-    try{localStorage.setItem(STORAGE_KEY,JSON.stringify(S));}catch(e){showToast('⚠️ Stockage plein','err');}
+    try{
+      localStorage.setItem(STORAGE_KEY,JSON.stringify(S));
+      localStorage.setItem('opje_sync_ts',String(Date.now()));
+    }catch(e){showToast('⚠️ Stockage plein','err');}
     if(typeof currentUser!=='undefined'&&currentUser&&SYNC.debouncedSave)SYNC.debouncedSave();
   }else if(!_saveQueued){
     _saveQueued=true;
     setTimeout(()=>{
       _saveQueued=false;_lastSave=Date.now();
-      try{localStorage.setItem(STORAGE_KEY,JSON.stringify(S));}catch(e){}
+      try{
+        localStorage.setItem(STORAGE_KEY,JSON.stringify(S));
+        localStorage.setItem('opje_sync_ts',String(Date.now()));
+      }catch(e){}
       if(typeof currentUser!=='undefined'&&currentUser&&SYNC.debouncedSave)SYNC.debouncedSave();
     },300);
   }
@@ -531,7 +766,7 @@ function showLevelUpOverlay(newGrade){
   const nameEl=document.getElementById('lu-name');
   const metaEl=document.getElementById('lu-xp-meta');
   const fill=document.getElementById('lu-xp-fill');
-  if(iconEl)iconEl.innerHTML=GRADE_SVGS[newGrade.name]||newGrade.icon;
+  if(iconEl)iconEl.innerHTML=gradeSvg(newGrade);
   if(nameEl)nameEl.textContent=newGrade.name;
   if(metaEl)metaEl.textContent=n?`${S.user.xp} / ${n.min} XP`:`${S.user.xp} XP · max`;
   if(fill){
@@ -576,7 +811,14 @@ const THEME28={
 };
 
 /* ─── XP & STREAK ─── */
-function addXP(amount){
+function getStreakMultiplier(){
+  const streak=S.user?.streak||0;
+  return Math.min(2,1+Math.floor(streak/7)*0.1);
+}
+function addXP(base){
+  const mult=getStreakMultiplier();
+  const amount=Math.round(base*mult);
+  const multStr=mult>1?(' ×'+mult.toFixed(1)):'';
   const before=getGrade();
   S.user.xp+=amount;
   /* ── Milestones XP ── */
@@ -599,7 +841,7 @@ function addXP(amount){
             o.stop(ctx.currentTime+t+.5);
           });
         }catch(e){}
-        showToast('🏆 MILESTONE — '+ms.toLocaleString('fr-FR')+' XP débloqués !','ok');
+        showToast('🏆 MILESTONE — '+ms.toLocaleString('fr-FR')+' XP débloqués !'+multStr,'ok');
       },400);
       break;
     }
@@ -620,6 +862,11 @@ function addXP(amount){
   try{syncPageHeader(S.page||'home');}catch(e){}
   try{if(typeof NOTIF!=='undefined'&&NOTIF.onActivityMaybe)NOTIF.onActivityMaybe();}catch(_){}
 }
+// CHOIX DÉLIBÉRÉ : streak par jour calendaire (J vs J-1)
+// et non par fenêtre glissante de 24h.
+// Avantage : intuitif ("j'ai révisé aujourd'hui").
+// Inconvénient : révision à 23h59 puis 00h01 = 2 jours.
+// À ne pas modifier sans mettre à jour la migration state.
 function updateStreak(){
   const today=new Date().toDateString();
   const yest=new Date(Date.now()-86400000).toDateString();
@@ -802,6 +1049,12 @@ function runPageRender(page){
   else if(page==='profil')renderProfil();
 }
 function navigateTo(page){
+  const prevPageEl=document.querySelector('.page.active');
+  if(prevPageEl&&prevPageEl.id==='p-examen-blanc'){
+    stopExamBlancTimer();
+    examBlancSession=null;
+  }
+  if(prevPageEl&&prevPageEl.id==='p-jour-j')jourJSession=null;
   const newEl=document.getElementById('p-'+page);
   if(!newEl)return;
   const oldEl=document.querySelector('.page.active');
@@ -847,8 +1100,659 @@ function getNextUnseenLessonId(){
   return null;
 }
 
-/** Action unique home : QCM dus → session FSRS ; sinon → prochaine leçon ; sinon → révision. */
+function getOralThemePerfRows(){
+  if(typeof ORAL_QB==='undefined'||!ORAL_QB.length||typeof ORAL_THEME_META==='undefined')return[];
+  S.oral=S.oral||{done:{},scores:{}};
+  const rows=[];
+  for(const meta of ORAL_THEME_META){
+    const list=ORAL_QB.filter(q=>q.theme===meta.key);
+    if(!list.length)continue;
+    const missing=list.filter(q=>!S.oral.done[q.id]).length;
+    let n=0,sum=0;
+    list.forEach(q=>{
+      const sc=S.oral.scores[q.id];
+      if(sc!==undefined){sum+=sc;n++;}
+    });
+    const avg=n?sum/n:0;
+    const weakness=missing*6+(list.length-missing)*(3-avg);
+    let masterySum=0;
+    list.forEach(q=>{
+      const maxP=q.points?.length||1;
+      if(S.oral.done[q.id])masterySum+=Math.min(1,(S.oral.scores[q.id]||0)/maxP);
+    });
+    const score=masterySum/list.length;
+    rows.push({key:meta.key,name:meta.label,score,weakness});
+  }
+  return rows;
+}
+function getWeakestOralTheme(){
+  const rows=getOralThemePerfRows();
+  let bestKey=null,bestW=-1;
+  rows.forEach(t=>{if(t.weakness>bestW){bestW=t.weakness;bestKey=t.key;}});
+  if(bestW<=0)return null;
+  return bestKey;
+}
+function normalizeArticleInput(s){
+  return String(s)
+    .toLowerCase()
+    .replace(/article\.?\s*/gi,'')
+    .replace(/art\.?\s*/gi,'')
+    .replace(/^l\.?/i,'')
+    .replace(/\s+/g,'')
+    .replace(/\./g,'-');
+}
+function searchOralByArticleSnippet(snippet){
+  if(!snippet||snippet.length<2||typeof ORAL_QB==='undefined')return[];
+  const k=normalizeArticleInput(snippet);
+  if(!k)return[];
+  const idSet=new Set();
+  Object.entries(ORAL_ARTICLE_INDEX).forEach(([art,ids])=>{
+    if(art.includes(k))ids.forEach(id=>idSet.add(id));
+  });
+  return Array.from(idSet).map(id=>ORAL_QB.find(q=>q.id===id)).filter(Boolean);
+}
+function renderModuleLacunesOralHtml(){
+  const rows=getOralThemePerfRows();
+  if(!rows.length)return '';
+  const sorted=[...rows].sort((a,b)=>a.score-b.score);
+  return sorted.map(t=>{
+    const pct=Math.round(t.score*100);
+    const col=t.score<0.5?'var(--err)':t.score<0.75?'var(--warn)':'var(--ok)';
+    return`<div class="module-stat-row">
+      <span class="module-stat-name">${eh(t.name)}</span>
+      <div class="module-stat-bar"><div class="module-stat-fill" style="width:${pct}%;background:${col}"></div></div>
+      <span class="module-stat-pct">${pct}%</span>
+    </div>`;
+  }).join('');
+}
+
+function buildExamBlancQuestions(){
+  if(typeof ORAL_QB==='undefined'||!ORAL_QB.length)return[];
+  const themes=[...new Set(ORAL_QB.map(q=>q.theme))];
+  const questions=[];
+  themes.forEach(theme=>{
+    const pool=ORAL_QB.filter(q=>q.theme===theme);
+    const shuffled=[...pool].sort(()=>Math.random()-0.5);
+    questions.push(...shuffled.slice(0,2));
+  });
+  return questions.sort(()=>Math.random()-0.5);
+}
+
+function startExamBlancTimer(onTick,onExpire){
+  let remaining=2700;
+  onTick(remaining);
+  examBlancTimerId=setInterval(()=>{
+    remaining--;
+    onTick(remaining);
+    if(remaining<=0){
+      clearInterval(examBlancTimerId);
+      examBlancTimerId=null;
+      onExpire();
+    }
+  },1000);
+}
+function stopExamBlancTimer(){
+  if(examBlancTimerId){
+    clearInterval(examBlancTimerId);
+    examBlancTimerId=null;
+  }
+}
+function formatTimerDisplay(seconds){
+  const m=Math.floor(seconds/60).toString().padStart(2,'0');
+  const s=(seconds%60).toString().padStart(2,'0');
+  return m+':'+s;
+}
+function injectExamenBlancQuizShell(){
+  const p=document.getElementById('p-examen-blanc');
+  if(!p)return;
+  p.innerHTML=`
+  <div class="app-hdr eb-app-hdr">
+    <button type="button" class="btn btn-ghost btn-sm eb-hdr-close" id="eb-close-btn" aria-label="Quitter l'examen blanc">✕</button>
+    <h2 class="app-hdr__title">Examen blanc</h2>
+    <span id="eb-timer" class="eb-timer">45:00</span>
+  </div>
+  <div class="scroll-area">
+    <div class="content">
+      <div class="eb-progress-bar">
+        <div class="eb-progress-fill" id="eb-progress-fill"></div>
+      </div>
+      <p class="eb-counter" id="eb-counter">Question 1 / 28</p>
+      <div class="eb-question-card" id="eb-question-card">
+        <p class="eb-theme" id="eb-theme"></p>
+        <p class="eb-question-text" id="eb-question-text"></p>
+      </div>
+      <div id="eb-answer-section" style="display:none">
+        <div class="eb-answer-card" id="eb-answer-card"></div>
+        <div class="eb-eval-btns">
+          <button type="button" class="btn-sec eb-btn-wrong" id="eb-btn-wrong">✗ Incorrect</button>
+          <button type="button" class="btn-primary eb-btn-correct" id="eb-btn-correct">✓ Correct</button>
+        </div>
+      </div>
+      <div id="eb-reveal-section">
+        <button type="button" class="btn-primary eb-btn-reveal" id="eb-btn-reveal">Voir la réponse</button>
+      </div>
+    </div>
+  </div>`;
+}
+function renderExamenBlancQuestion(){
+  if(!examBlancSession)return;
+  const{questions,currentIndex}=examBlancSession;
+  const q=questions[currentIndex];
+  if(!q){finishExamenBlanc('done');return;}
+  const total=questions.length;
+  const ec=document.getElementById('eb-counter');
+  if(ec)ec.textContent='Question '+(currentIndex+1)+' / '+total;
+  const fill=document.getElementById('eb-progress-fill');
+  if(fill)fill.style.width=(currentIndex/total*100)+'%';
+  const th=document.getElementById('eb-theme');
+  if(th)th.textContent=q.theme||'';
+  const qt=document.getElementById('eb-question-text');
+  if(qt)qt.textContent=q.q||'';
+  const ansSec=document.getElementById('eb-answer-section');
+  const revSec=document.getElementById('eb-reveal-section');
+  if(ansSec)ansSec.style.display='none';
+  if(revSec)revSec.style.display='block';
+  examBlancSession.revealed=false;
+  const answerCard=document.getElementById('eb-answer-card');
+  if(answerCard){
+    const pointsHtml=(q.points||[]).map(pt=>'<li class="eb-point">'+eh(pt)+'</li>').join('');
+    const articlesHtml=(q.articles||[]).map(a=>'<span class="eb-article-tag">'+eh(a)+'</span>').join('');
+    answerCard.innerHTML='<ul class="eb-points">'+pointsHtml+'</ul><div class="eb-articles">'+articlesHtml+'</div>';
+  }
+}
+function recordExamenBlancAnswer(correct){
+  if(!examBlancSession)return;
+  const q=examBlancSession.questions[examBlancSession.currentIndex];
+  const theme=q.theme||'Autre';
+  if(!examBlancSession.scores[theme])examBlancSession.scores[theme]={bon:0,total:0};
+  examBlancSession.scores[theme].total++;
+  if(correct){
+    examBlancSession.scores[theme].bon++;
+    examBlancSession.bonnes++;
+  }
+  S.oral=S.oral||{done:{},scores:{}};
+  const nPts=q.points?.length||1;
+  S.oral.done[q.id]=true;
+  const prev=S.oral.scores[q.id]||0;
+  const ptsKnown=correct?nPts:0;
+  S.oral.scores[q.id]=Math.max(prev,ptsKnown);
+  examBlancSession.currentIndex++;
+  if(examBlancSession.currentIndex>=examBlancSession.questions.length)finishExamenBlanc('done');
+  else renderExamenBlancQuestion();
+}
+function finishExamenBlanc(reason){
+  stopExamBlancTimer();
+  if(!examBlancSession)return;
+  const duree=Math.floor((Date.now()-examBlancSession.startTime)/1000);
+  const total=examBlancSession.questions.length;
+  const bonnes=examBlancSession.bonnes;
+  const scoreGlobal=total>0?bonnes/total:0;
+  const scoreParModule={...examBlancSession.scores};
+  examBlancSession=null;
+  const entry={
+    date:new Date().toISOString(),
+    scoreGlobal,
+    scoreParModule,
+    dureeSecondes:duree,
+    nbQuestions:total,
+    bonnes
+  };
+  S.examHistory=S.examHistory||[];
+  S.examHistory.push(entry);
+  while(S.examHistory.length>5)S.examHistory.shift();
+  try{save();}catch(e){}
+  renderExamenBlancResultats(entry,reason);
+}
+function renderExamenBlancResultats(entry,reason){
+  const pct=Math.round(entry.scoreGlobal*100);
+  const dureeMin=Math.floor(entry.dureeSecondes/60);
+  const dureeS=entry.dureeSecondes%60;
+  const timeoutMsg=reason==='timeout'?'<p class="eb-timeout-msg">⏱ Temps écoulé</p>':'';
+  const modulesRows=Object.entries(entry.scoreParModule)
+    .sort((a,b)=>{
+      const ra=a[1].total?a[1].bon/a[1].total:0;
+      const rb=b[1].total?b[1].bon/b[1].total:0;
+      return ra-rb;
+    })
+    .map(([theme,sc])=>{
+      const p=sc.total>0?Math.round(sc.bon/sc.total*100):0;
+      const cls=p<50?'eb-score--err':p<75?'eb-score--warn':'eb-score--ok';
+      return'<tr><td class="eb-td-theme">'+eh(theme)+'</td><td class="eb-td-score '+cls+'">'+p+'%</td><td class="eb-td-bar"><div class="eb-mini-bar"><div class="eb-mini-fill '+cls+'" style="width:'+p+'%"></div></div></td></tr>';
+    }).join('');
+  const scoreClass=pct>=75?'eb-global--ok':pct>=50?'eb-global--warn':'eb-global--err';
+  const bonAff=entry.bonnes!=null?entry.bonnes:Math.round(entry.scoreGlobal*entry.nbQuestions);
+  const root=document.getElementById('p-examen-blanc');
+  if(!root)return;
+  root.innerHTML=`
+    <div class="app-hdr eb-app-hdr">
+      <h2 class="app-hdr__title">Résultats</h2>
+    </div>
+    <div class="scroll-area">
+      <div class="content">
+        ${timeoutMsg}
+        <div class="eb-score-global ${scoreClass}">${pct}%</div>
+        <p class="eb-score-sub">
+          ${bonAff} / ${entry.nbQuestions} correctes
+          — ${dureeMin}min ${String(dureeS).padStart(2,'0')}s
+        </p>
+        <table class="eb-modules-table">
+          <thead><tr>
+            <th>Module</th><th>Score</th><th></th>
+          </tr></thead>
+          <tbody>${modulesRows}</tbody>
+        </table>
+        <div class="eb-result-btns">
+          <button type="button" class="btn-sec" id="eb-btn-retry-errors">
+            Revoir mes erreurs
+          </button>
+          <button type="button" class="btn-primary" id="eb-btn-close-result">
+            Fermer
+          </button>
+        </div>
+      </div>
+    </div>`;
+  document.getElementById('eb-btn-close-result')?.addEventListener('click',()=>{
+    examBlancSession=null;
+    navigateTo('home');
+  });
+  document.getElementById('eb-btn-retry-errors')?.addEventListener('click',()=>{
+    examBlancSession=null;
+    startSmartSession();
+  });
+}
+function startExamenBlanc(){
+  const questions=buildExamBlancQuestions();
+  if(!questions.length){
+    showToast('Aucune question disponible.','err');
+    return;
+  }
+  injectExamenBlancQuizShell();
+  examBlancSession={
+    questions,
+    currentIndex:0,
+    scores:{},
+    bonnes:0,
+    startTime:Date.now(),
+    revealed:false
+  };
+  showPage('p-examen-blanc');
+  renderExamenBlancQuestion();
+  startExamBlancTimer(remaining=>{
+    const el=document.getElementById('eb-timer');
+    if(el){
+      el.textContent=formatTimerDisplay(remaining);
+      el.classList.toggle('eb-timer--urgent',remaining<=60);
+    }
+  },()=>finishExamenBlanc('timeout'));
+}
+function showPage(pageId){
+  const id=pageId.startsWith('p-')?pageId:'p-'+pageId;
+  const prev=document.querySelector('.page.active');
+  if(prev&&prev.id==='p-examen-blanc'&&id!=='p-examen-blanc'){
+    stopExamBlancTimer();
+    examBlancSession=null;
+  }
+  if(prev&&prev.id==='p-jour-j'&&id!=='p-jour-j')jourJSession=null;
+  const newEl=document.getElementById(id);
+  if(!newEl)return;
+  document.querySelectorAll('.page').forEach(p=>{
+    p.classList.remove('active','leaving','entering');
+    p.style.display='';
+  });
+  newEl.classList.add('active','entering');
+  void newEl.offsetWidth;
+  requestAnimationFrame(()=>{
+    requestAnimationFrame(()=>{newEl.classList.remove('entering');});
+  });
+  const tab=id==='p-home'?'home':id==='p-lecons'?'lecons':id==='p-revision'?'revision':id==='p-examen'?'examen':id==='p-profil'?'profil':null;
+  if(tab){
+    S.page=tab;
+    document.querySelectorAll('.nav-btn').forEach(b=>{b.classList.toggle('active',b.id==='nav-'+tab);});
+    runPageRender(tab);
+    syncPageHeader(tab);
+  }else{
+    document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  }
+  window.scrollTo({top:0,behavior:'instant'});
+}
+function initExamenBlancDelegation(){
+  const root=document.getElementById('p-examen-blanc');
+  if(!root||root._ebDel)return;
+  root._ebDel=true;
+  root.addEventListener('click',onExamenBlancRootClick);
+}
+function onExamenBlancRootClick(e){
+  const btn=e.target.closest('button');
+  const bid=btn?.id;
+  if(bid==='eb-btn-reveal'){
+    if(!examBlancSession||examBlancSession.revealed)return;
+    examBlancSession.revealed=true;
+    const ans=document.getElementById('eb-answer-section');
+    const rev=document.getElementById('eb-reveal-section');
+    if(ans)ans.style.display='block';
+    if(rev)rev.style.display='none';
+    return;
+  }
+  if(bid==='eb-btn-correct'){recordExamenBlancAnswer(true);return;}
+  if(bid==='eb-btn-wrong'){recordExamenBlancAnswer(false);return;}
+  if(bid==='eb-close-btn'){
+    stopExamBlancTimer();
+    examBlancSession=null;
+    navigateTo('home');
+  }
+}
+window.startExamenBlanc=startExamenBlanc;
+window.showPage=showPage;
+
+function getDueFlashcards(){
+  if(typeof FSRS==='undefined'||!FSRS.getDueFlashcards)return[];
+  return FSRS.getDueFlashcards(S.flashFsrs);
+}
+function jjFlashDueTs(f){
+  const c=S.flashFsrs?.[f.id];
+  const t=c?.due;
+  return typeof t==='number'?t:Number(t)||0;
+}
+function buildRevisionJourJ(){
+  let oralQuestions=[];
+  let fichesDues=[];
+  if(typeof getOralThemePerfRows==='function'&&typeof ORAL_QB!=='undefined'&&ORAL_QB.length){
+    const rows=getOralThemePerfRows();
+    const weakThemes=rows
+      .sort((a,b)=>(a.score??0)-(b.score??0))
+      .slice(0,5)
+      .map(r=>r.key);
+    if(weakThemes.length){
+      oralQuestions=ORAL_QB.filter(q=>weakThemes.includes(q.theme))
+        .sort(()=>Math.random()-0.5)
+        .slice(0,10);
+    }
+  }
+  const due=getDueFlashcards();
+  if(due.length){
+    fichesDues=[...due].sort((a,b)=>jjFlashDueTs(a)-jjFlashDueTs(b)).slice(0,5);
+  }
+  return{oralQuestions,fichesDues};
+}
+function reviewFlashcard(id,mastered){
+  if(!id)return;
+  if(S.fs)S.fs[id]=mastered?'m':'s';
+  if(typeof FSRS!=='undefined'&&FSRS.reviewFlashcard)FSRS.reviewFlashcard(id,!!mastered);
+  try{save();}catch(e){}
+}
+function renderJourJCurrent(){
+  if(!jourJSession)return;
+  const{phase,oralQuestions,oralIndex,fichesDues,ficheIndex}=jourJSession;
+  const phaseEl=document.getElementById('jj-phase-label');
+  if(phaseEl){
+    if(phase==='oral'&&oralQuestions.length){
+      phaseEl.textContent='Questions '+(oralIndex+1)+'/'+oralQuestions.length;
+    }else if(phase==='fiches'&&fichesDues.length){
+      phaseEl.textContent='Fiches '+(ficheIndex+1)+'/'+fichesDues.length;
+    }else phaseEl.textContent='';
+  }
+  const content=document.getElementById('jj-content');
+  if(!content)return;
+  if(phase==='oral'){
+    const q=oralQuestions[oralIndex];
+    if(!q){
+      jourJSession.phase=fichesDues.length?'fiches':'done';
+      renderJourJCurrent();
+      return;
+    }
+    const pointsHtml=(q.points||[]).map(p=>'<li class="jj-point">'+eh(p)+'</li>').join('');
+    const articlesHtml=(q.articles||[]).map(a=>'<span class="jj-article-tag">'+eh(a)+'</span>').join('');
+    content.innerHTML=
+      '<div class="jj-card"><p class="jj-theme">'+eh(q.theme||'')+'</p><p class="jj-question">'+eh(q.q||'')+'</p></div>'+
+      '<div id="jj-answer" style="display:none"><div class="jj-answer-card"><ul class="jj-points">'+pointsHtml+'</ul><div class="jj-articles">'+articlesHtml+'</div></div>'+
+      '<div class="jj-eval-btns">'+
+      '<button type="button" class="btn-sec" id="jj-wrong">✗ Incorrect</button>'+
+      '<button type="button" class="btn-primary" id="jj-correct">✓ Correct</button></div></div>'+
+      '<div id="jj-reveal"><button type="button" class="btn-sec jj-btn-reveal" id="jj-btn-reveal">Voir la réponse</button></div>';
+  }else if(phase==='fiches'){
+    const f=fichesDues[ficheIndex];
+    if(!f){
+      jourJSession.phase='done';
+      renderJourJCurrent();
+      return;
+    }
+    const recto=eh(f.nm||f.q||'');
+    const verso=eh(f.L||f.A||'');
+    content.innerHTML=
+      '<div class="jj-card"><p class="jj-theme">Fiche '+eh(f.id||'')+'</p><p class="jj-question">'+recto+'</p></div>'+
+      '<div id="jj-fiche-answer" style="display:none"><div class="jj-answer-card"><p class="jj-fiche-content">'+verso+'</p></div>'+
+      '<div class="jj-eval-btns">'+
+      '<button type="button" class="btn-sec" id="jj-fiche-again">À revoir</button>'+
+      '<button type="button" class="btn-primary" id="jj-fiche-ok">Maîtrisé</button></div></div>'+
+      '<div id="jj-fiche-reveal"><button type="button" class="btn-sec jj-btn-reveal" id="jj-fiche-btn-reveal">Voir la réponse</button></div>';
+  }else{
+    content.innerHTML=
+      '<div class="jj-done"><p class="jj-done-icon">🎯</p><p class="jj-done-msg">Bonne chance pour ton examen</p>'+
+      '<button type="button" class="btn-primary jj-btn-close-done" id="jj-btn-close-done">Fermer</button></div>';
+  }
+}
+function jjAdvanceOral(correct){
+  if(!jourJSession||jourJSession.phase!=='oral')return;
+  const q=jourJSession.oralQuestions[jourJSession.oralIndex];
+  if(q){
+    S.oral=S.oral||{done:{},scores:{}};
+    const nPts=q.points?.length||1;
+    S.oral.done[q.id]=true;
+    const prev=S.oral.scores[q.id]||0;
+    const ptsKnown=correct?nPts:0;
+    S.oral.scores[q.id]=Math.max(prev,ptsKnown);
+    try{save();}catch(e){}
+  }
+  jourJSession.oralIndex++;
+  if(jourJSession.oralIndex>=jourJSession.oralQuestions.length){
+    jourJSession.phase=jourJSession.fichesDues.length?'fiches':'done';
+  }
+  renderJourJCurrent();
+}
+function onJourJRootClick(e){
+  const btn=e.target.closest('button');
+  const bid=btn?.id;
+  if(bid==='jj-close-btn'){
+    jourJSession=null;
+    navigateTo('home');
+    return;
+  }
+  if(!jourJSession)return;
+  if(bid==='jj-btn-reveal'){
+    const ans=document.getElementById('jj-answer');
+    const rev=document.getElementById('jj-reveal');
+    if(ans)ans.style.display='block';
+    if(rev)rev.style.display='none';
+    jourJSession.revealed=true;
+    return;
+  }
+  if(bid==='jj-correct'){jjAdvanceOral(true);return;}
+  if(bid==='jj-wrong'){jjAdvanceOral(false);return;}
+  if(bid==='jj-fiche-btn-reveal'){
+    const fa=document.getElementById('jj-fiche-answer');
+    const fr=document.getElementById('jj-fiche-reveal');
+    if(fa)fa.style.display='block';
+    if(fr)fr.style.display='none';
+    return;
+  }
+  if(bid==='jj-fiche-ok'){
+    const f=jourJSession.fichesDues[jourJSession.ficheIndex];
+    if(f)reviewFlashcard(f.id,true);
+    jourJSession.ficheIndex++;
+    if(jourJSession.ficheIndex>=jourJSession.fichesDues.length)jourJSession.phase='done';
+    renderJourJCurrent();
+    return;
+  }
+  if(bid==='jj-fiche-again'){
+    const f=jourJSession.fichesDues[jourJSession.ficheIndex];
+    if(f)reviewFlashcard(f.id,false);
+    jourJSession.ficheIndex++;
+    if(jourJSession.ficheIndex>=jourJSession.fichesDues.length)jourJSession.phase='done';
+    renderJourJCurrent();
+    return;
+  }
+  if(bid==='jj-btn-close-done'){
+    jourJSession=null;
+    navigateTo('home');
+  }
+}
+function initJourJDelegation(){
+  const root=document.getElementById('p-jour-j');
+  if(!root||root._jjDel)return;
+  root._jjDel=true;
+  root.addEventListener('click',onJourJRootClick);
+}
+function startRevisionJourJ(){
+  const{oralQuestions,fichesDues}=buildRevisionJourJ();
+  if(!oralQuestions.length&&!fichesDues.length){
+    showToast('Aucune question disponible pour la révision Jour J.','ok');
+    return;
+  }
+  jourJSession={
+    oralQuestions,
+    fichesDues,
+    phase:oralQuestions.length?'oral':'fiches',
+    oralIndex:0,
+    ficheIndex:0,
+    revealed:false
+  };
+  showPage('p-jour-j');
+  renderJourJCurrent();
+}
+window.reviewFlashcard=reviewFlashcard;
+
+function renderExamHistoryHtml(){
+  S.examHistory=S.examHistory||[];
+  if(!S.examHistory.length)return'<p class="module-stat-hint">Aucun examen blanc encore</p>';
+  return[...S.examHistory].reverse().map(ex=>{
+    const d=new Date(ex.date);
+    const df=d.toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+    const pct=Math.round((ex.scoreGlobal||0)*100);
+    const sec=ex.dureeSecondes||0;
+    const mm=Math.floor(sec/60);
+    const rsec=sec%60;
+    return`<div class="exam-hist-row"><span>${eh(df)}</span><span class="exam-hist-pct">${pct}%</span><span>${mm} min ${rsec} s</span></div>`;
+  }).join('');
+}
+
+function getRevisionPhaseContent(daysLeft){
+  if(daysLeft===null||daysLeft===undefined)return{
+    phase:'Phase 1 — Fondations',
+    periode:'J-60 à J-40',
+    focus:'Théorie + Infractions',
+    taches:['Compléter les modules 1 à 6','Apprendre les triptyques (F01–F39)','Flashcards quotidiennes (15 min)','1 QCM express par jour']
+  };
+  if(daysLeft>40)return{
+    phase:'Phase 1 — Fondations',
+    periode:'J-60 à J-40',
+    focus:'Théorie + Infractions',
+    taches:['Compléter les modules 1 à 6','Apprendre les triptyques (F01–F39)','Flashcards quotidiennes — 15 min/jour','1 QCM express par jour']
+  };
+  if(daysLeft>14)return{
+    phase:'Phase 2 — Consolidation',
+    periode:'J-40 à J-14',
+    focus:'Simulateur oral + PV',
+    taches:['Compléter les modules 7 à 14','Maîtriser les 64 infractions (F01–F64)','2 simulations orales par semaine','Révision FSRS quotidienne — 20 min/jour']
+  };
+  if(daysLeft>0)return{
+    phase:'Phase 3 — Affûtage',
+    periode:'J-14 à J-1',
+    focus:'Examens blancs + ciblage lacunes',
+    taches:['1 examen blanc par semaine','Ciblage intensif des modules faibles','Révision canevas PV (1 par jour)','Flashcards intensives — 30 min/jour']
+  };
+  if(daysLeft===0)return{
+    phase:'Jour J — Dernière révision',
+    periode:'Le matin de l\'examen',
+    focus:'Confiance uniquement',
+    taches:['10 questions les plus ratées — pas plus','5 infractions les moins mémorisées','PAS de nouveau contenu aujourd\'hui','Relire 1 fiche synthèse du module le plus faible']
+  };
+  return{
+    phase:'Post-examen',
+    periode:'',
+    focus:'Maintien ou prochaine session',
+    taches:['Analyser les points faibles identifiés','Maintenir le streak quotidien','Préparer la prochaine session si nécessaire']
+  };
+}
+
+function renderRevisionPlan(){
+  const el=document.getElementById('pr-plan-content');
+  if(!el)return;
+  const daysLeft=S.user?.examDate?daysUntilExam(S.user.examDate):null;
+  const plan=getRevisionPhaseContent(daysLeft);
+  const focusLabel=plan.focus?`<p class="rp-focus">${eh(plan.focus)}</p>`:'';
+  const periodeLabel=plan.periode?`<span class="rp-periode">${eh(plan.periode)}</span>`:'';
+  el.innerHTML=`
+    <div class="rp-header">
+      <span class="rp-phase">${eh(plan.phase)}</span>
+      ${periodeLabel}
+    </div>
+    ${focusLabel}
+    <ul class="rp-tasks">
+      ${plan.taches.map(t=>`<li class="rp-task-item">${eh(t)}</li>`).join('')}
+    </ul>
+  `;
+}
+
+function startDueSession(){
+  const due=typeof FSRS!=='undefined'&&FSRS.getDueFlashcards?FSRS.getDueFlashcards(S.flashFsrs):[];
+  if(!due.length){showToast('Aucune fiche due pour l’instant','ok');return;}
+  S.fsDueSession={ids:due.map(f=>f.id)};
+  save();
+  navigateTo('revision');
+  setTimeout(()=>{
+    try{
+      setRevTab('fiches');
+      openFiche(S.fsDueSession.ids[0]);
+    }catch(e){console.warn('startDueSession',e);}
+  },100);
+}
+
+function nextDueFiche(){
+  if(!S.fsDueSession?.ids?.length)return;
+  const cur=S._ficheOpenId;
+  const ix=S.fsDueSession.ids.indexOf(cur);
+  if(ix<0)return;
+  if(ix+1>=S.fsDueSession.ids.length){
+    endDueFicheSession(true);
+    return;
+  }
+  openFiche(S.fsDueSession.ids[ix+1]);
+}
+
+function endDueFicheSession(doneMsg){
+  const jjRev=!!S._jjRevision;
+  if(jjRev)S._jjRevision=false;
+  S.fsDueSession=null;
+  S._ficheOpenId=null;
+  try{save();}catch(e){}
+  const ov=document.getElementById('fiche-ov');
+  if(ov){ov.style.display='none';ov.style.alignItems='flex-end';}
+  document.body.style.overflow='';
+  try{renderBubbles();}catch(e){}
+  if(doneMsg){
+    if(jjRev)showToast('Bonne chance pour ton examen 🎯','ok');
+    else showToast('Session fiches dues terminée','ok');
+  }
+}
+
+/** Home : fiches FSRS dues → oral faible → QCM dus → leçon → révision. */
 function continueProgress(){
+  const dueFlash=typeof FSRS!=='undefined'&&FSRS.getDueFlashcards?FSRS.getDueFlashcards(S.flashFsrs):[];
+  if(dueFlash.length>0){
+    startDueSession();
+    return;
+  }
+  const weakT=getWeakestOralTheme();
+  if(weakT){
+    navigateTo('revision');
+    setTimeout(()=>{
+      try{
+        setRevTab('entrainement');
+        oralStartSession(weakT);
+      }catch(e){console.warn('continueProgress oral',e);}
+    },100);
+    return;
+  }
   const due=QB.filter(q=>FSRS.isDue(S.qcm.cards[q.id]));
   if(due.length>0){
     startSmartSession();
@@ -883,15 +1787,18 @@ function renderHome(){
   if(el('h-greeting'))el('h-greeting').textContent=greet+',';
   if(el('h-name'))el('h-name').textContent=firstName;
   if(el('h-grade-name'))el('h-grade-name').textContent=g.name;
-  if(el('h-grade-ico-sm'))el('h-grade-ico-sm').innerHTML=GRADE_SVGS[g.name]||g.icon;
+  if(el('h-grade-ico-sm'))el('h-grade-ico-sm').innerHTML=gradeSvg(g);
   if(el('h-streak'))el('h-streak').textContent=String(streakN);
+  const smult=getStreakMultiplier();
+  const smultEl=el('h-streak-mult');
+  if(smultEl)smultEl.innerHTML=smult>1?'<span class="streak-mult">×'+smult.toFixed(1)+'</span>':'';
   const streakUnit=el('h-streak-unit');
   if(streakUnit)streakUnit.textContent=streakN>1?'jours':'jour';
   const streakRow=el('h-streak-row');
   if(streakRow)streakRow.classList.toggle('hero-streak--pulse',streakN>3);
   const nextNameEl=el('h-xp-next-name');
   if(nextNameEl)nextNameEl.textContent=n?n.name:'Max';
-  if(el('h-grade-badge'))el('h-grade-badge').innerHTML=GRADE_SVGS[g.name]||g.icon;
+  if(el('h-grade-badge'))el('h-grade-badge').innerHTML=gradeSvg(g);
   if(el('h-xpbar'))el('h-xpbar').style.width=pct+'%';
   if(el('h-xp-meta')){
     const meta=n?`${S.user.xp} / ${n.min} XP`:(S.user.xp+' XP · max');
@@ -901,21 +1808,45 @@ function renderHome(){
   if(el('h-lessons-done'))el('h-lessons-done').textContent=lessonsDone;
   if(el('h-qcm-done'))el('h-qcm-done').textContent=Object.keys(S.qcm.cards).length;
   const ecEl=document.getElementById('h-exam-countdown');
+  let daysLeftHero=null;
   if(S.user.examDate){
-    const examDate=new Date(S.user.examDate+'-01');
-    const daysLeft=Math.max(0,Math.ceil((examDate-Date.now())/86400000));
-    if(el('h-exam-days'))el('h-exam-days').textContent=daysLeft>0?String(daysLeft):'Jour J';
-    const sub=el('h-exam-session');
-    if(sub)sub.textContent='Session '+S.user.examDate.replace('-',' ');
-    if(ecEl){
-      ecEl.style.display='flex';
-      ecEl.classList.remove('countdown--calm','countdown--warn','countdown--urgent');
-      if(daysLeft>90)ecEl.classList.add('countdown--calm');
-      else if(daysLeft>=30)ecEl.classList.add('countdown--warn');
-      else ecEl.classList.add('countdown--urgent');
+    const daysLeft=daysUntilExam(S.user.examDate);
+    daysLeftHero=daysLeft;
+    if(daysLeft!==null){
+      if(el('h-exam-days'))el('h-exam-days').textContent=daysLeft>0?String(daysLeft):(daysLeft===0?'Jour J':'Passé');
+      const sub=el('h-exam-session');
+      if(sub)sub.textContent='Objectif : '+formatExamSessionLabel(S.user.examDate);
+      const ph=el('h-exam-phase');
+      if(ph){
+        const phInf=examPhaseLabel(daysLeft);
+        ph.textContent=phInf.icon+' Phase '+phInf.lbl+' — '+phInf.txt;
+      }
+      if(ecEl){
+        ecEl.style.display='flex';
+        ecEl.classList.remove('countdown--calm','countdown--warn','countdown--urgent');
+        const cdCls=daysLeft<0?'countdown--calm':daysLeft<=14?'countdown--urgent':daysLeft<=40?'countdown--warn':'countdown--calm';
+        ecEl.classList.add(cdCls);
+      }
+    }else{
+      if(ecEl)ecEl.style.display='none';
+      const phBad=el('h-exam-phase');if(phBad)phBad.textContent='';
     }
   }else{
     if(ecEl)ecEl.style.display='none';
+    const ph0=el('h-exam-phase');if(ph0)ph0.textContent='';
+  }
+  const hExamAct=document.getElementById('h-exam-hero-actions');
+  if(hExamAct){
+    if(daysLeftHero!==null){
+      let h='';
+      if(daysLeftHero===0||daysLeftHero===1)h+='<button type="button" id="btn-revision-jour-j" class="btn btn-warning btn-revision-j" onclick="startRevisionJourJ()">🎯 Révision Jour J</button>';
+      if(daysLeftHero<=40&&daysLeftHero>=0)h+='<button type="button" id="btn-examen-blanc-hero" class="btn-primary" onclick="startExamenBlanc()">📋 Examen blanc</button>';
+      hExamAct.innerHTML=h;
+      hExamAct.style.display=h?'flex':'none';
+    }else{
+      hExamAct.innerHTML='';
+      hExamAct.style.display='none';
+    }
   }
   if(el('h-pro-teaser'))el('h-pro-teaser').style.display=(S.isPro||S.user.isPRO)?'none':'flex';
   const sw=document.getElementById('h-streak-warning');
@@ -1107,10 +2038,7 @@ function showLessonCompleteOverlay(lessonId,xpGained){
   const icoEl=document.getElementById('lc-grade-ico');
   const nmEl=document.getElementById('lc-grade-name');
   const xpEl=document.getElementById('lc-xp-line');
-  if(icoEl){
-    const svg=GRADE_SVGS&&GRADE_SVGS[grade.name];
-    icoEl.innerHTML=svg||grade.icon;
-  }
+  if(icoEl)icoEl.innerHTML=gradeSvg(grade);
   if(nmEl)nmEl.textContent=grade.name;
   if(xpEl)xpEl.textContent='+'+xpGained+' XP';
   ov.removeAttribute('inert');
@@ -1128,7 +2056,109 @@ function normalizeRevTab(t){
   const legacy={qcm:'reviser',proc:'fiches',libertes:'fiches',blitz:'entrainement',classer:'entrainement',imprimer:'ressources',annales:'ressources'};
   return legacy[t]||t;
 }
+/* ─── Alertes intelligentes pour la page Révision (banque QCM QB) ─── */
+function formatCatLabel(cat){
+  const MAP={
+    GAV:'Garde à vue',FLAGRANCE:'Flagrance',PERQUIZ:'Perquisitions',AUDLIB:'Audition libre',
+    MANDATS:'Mandats',INSTRUCTION:'Instruction',MINEURS:'Mineurs',CRIMORG:'Criminalité organisée',
+    CDO:'CDO',FICHIERS:'Fichiers',LIBERTES:'Libertés publiques',CONTROLES:'Contrôles d\'identité',
+    STUPS:'Stupéfiants',VIOLENCES_CONJ:'Violences conjugales',INFRACTIONS:'Infractions',
+    INFRACTIONS_PUB:'Infractions publiques',NULLITES:'Nullités',COMMISSION:'Commission rogatoire',
+    CYBER:'Cybercriminalité',EUROP:'Droit européen',ATTEINTES_LIBERTE:'Atteintes aux libertés',
+    PROBATION:'Probation',ACTION_PUB:'Action publique',ENQUETES_SPEC:'Enquêtes spéciales',
+    MESURES_COERC:'Mesures coercitives',PRESCRIP:'Prescription',PATRIMONIAL:'Patrimonial',
+    TAJ:'TAJ',RECIDIVE:'Récidive',OPJ:'OPJ',LEGDEF:'Légitime défense',ALTERNATIVES:'Alternatives aux poursuites',
+    REQS:'Réquisitions'
+  };
+  if(typeof cat!=='string'||!cat)return'';
+  return MAP[cat]||cat.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+}
+function getSmartAlerts(){
+  const alerts=[];
+  const now=Date.now();
+  const cards=S.qcm?.cards||{};
+  const bank=(typeof QB!=='undefined'?QB:window.QB)||[];
+  if(!bank.length)return alerts;
+  const catLastReview={};
+  for(const[id,card]of Object.entries(cards)){
+    if(!card||!card.due)continue;
+    const q=bank.find(x=>x.id===id);
+    if(!q||!q.cat)continue;
+    const lastReview=card.due-(card.interval||1)*86400000;
+    if(!catLastReview[q.cat]||lastReview>catLastReview[q.cat])catLastReview[q.cat]=lastReview;
+  }
+  for(const[cat,lastDate]of Object.entries(catLastReview)){
+    const daysSince=Math.floor((now-lastDate)/86400000);
+    if(daysSince>=7){
+      alerts.push({
+        type:'neglected',
+        icon:'⚠️',
+        text:formatCatLabel(cat)+' non révisé depuis '+daysSince+' jours',
+        priority:daysSince
+      });
+    }
+  }
+  const catStats={};
+  for(const[id,card]of Object.entries(cards)){
+    if(!card||(card.reps||0)===0)continue;
+    const q=bank.find(x=>x.id===id);
+    if(!q||!q.cat)continue;
+    if(!catStats[q.cat])catStats[q.cat]={ok:0,total:0};
+    catStats[q.cat].total++;
+    if((card.ok||0)>(card.ko||0))catStats[q.cat].ok++;
+  }
+  for(const[cat,stats]of Object.entries(catStats)){
+    if(stats.total<5)continue;
+    const rate=Math.round(stats.ok/stats.total*100);
+    if(rate<50){
+      alerts.push({
+        type:'weak',
+        icon:'🔴',
+        text:formatCatLabel(cat)+' en difficulté ('+rate+'%)',
+        priority:100-rate
+      });
+    }
+  }
+  if(S.user?.examDate){
+    try{
+      const daysLeft=typeof daysUntilExam==='function'?daysUntilExam(S.user.examDate):null;
+      if(daysLeft!==null&&daysLeft>0&&daysLeft<=30){
+        const touchedCats=new Set(Object.keys(catStats));
+        const allCats=[...new Set(bank.map(q=>q.cat).filter(Boolean))];
+        const unstarted=allCats.filter(c=>!touchedCats.has(c));
+        if(unstarted.length>0){
+          alerts.push({
+            type:'urgent',
+            icon:'🚨',
+            text:'J-'+daysLeft+' : '+unstarted.length+' thème(s) jamais révisé(s)',
+            priority:200
+          });
+        }
+      }
+    }catch(_){}
+  }
+  return alerts.sort((a,b)=>b.priority-a.priority).slice(0,3);
+}
+function renderSmartAlerts(){
+  const host=document.getElementById('rev-smart-alerts');
+  if(!host)return'';
+  const alerts=getSmartAlerts();
+  if(!alerts.length){
+    host.innerHTML='';
+    host.style.display='none';
+    return'';
+  }
+  host.style.display='';
+  host.innerHTML='<div class="smart-alerts-wrap">'+alerts.map(a=>{
+    const cls=a.type==='urgent'?' smart-alert--urgent':'';
+    return'<div class="smart-alert'+cls+'" role="status">'+
+      '<span class="smart-alert-icon" aria-hidden="true">'+a.icon+'</span>'+
+      '<span class="smart-alert-text">'+eh(a.text)+'</span></div>';
+  }).join('')+'</div>';
+  return host.innerHTML;
+}
 function renderRevision(){
+  renderSmartAlerts();
   renderRevThemes();renderBubbles();renderProcList();updateDueCount();
   setRevTab(normalizeRevTab(S.rev?.tab)||'reviser');
   const erCard=document.getElementById('error-review-card');
@@ -1164,6 +2194,9 @@ function setRevTab(tab){
 }
 /* ─── ENTRAÎNEMENT ORAL (session + overlay) ─── */
 let ORAL_SESSION=null;
+let examBlancTimerId=null;
+let examBlancSession=null;
+let jourJSession=null;
 function oralShuffle(a){const t=[...a];for(let i=t.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[t[i],t[j]]=[t[j],t[i]];}return t;}
 function ensureOralOv(){
   let ov=document.getElementById('oral-ov');
@@ -1200,6 +2233,11 @@ function renderOralMode(){
   const byTheme={};
   ORAL_QB.forEach(q=>{if(!byTheme[q.theme])byTheme[q.theme]=[];byTheme[q.theme].push(q);});
   root.innerHTML=`
+<div class="oral-search-block">
+  <label class="oral-search-lbl" for="oral-search">Recherche par article (CPP, CP…)</label>
+  <input type="search" id="oral-search" class="oral-search-inp" placeholder="ex. 62-2, 706-88, 122-4…" autocomplete="off" oninput="oralOnSearchInput()"/>
+  <div id="oral-search-results"></div>
+</div>
 <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--t3);margin-bottom:6px">${doneN} / ${total} sujets traités</div>
 <div class="slbl" style="margin-top:4px;margin-bottom:8px">Par thème (5 questions / session)</div>
 <div id="oral-theme-cards">`+ORAL_THEME_META.map(meta=>{
@@ -1226,12 +2264,178 @@ function startOralMode(){
   navigateTo('revision');
   setTimeout(()=>{try{renderOralMode();document.getElementById('oral-mode-root')?.scrollIntoView({behavior:'smooth',block:'nearest'});}catch(e){}},80);
 }
-function oralStartSession(themeKey){
-  const pool=ORAL_QB.filter(q=>q.theme===themeKey);
-  if(!pool.length){showToast('Aucune question pour ce thème','err');return;}
-  ORAL_SESSION={theme:themeKey,queue:oralShuffle(pool).slice(0,Math.min(5,pool.length)),qIndex:0,phase:1,pointIdx:0,known:0,timer:null,tRemaining:0,sessionXP:0};
+function oralStartSession(themeKey,customQueue){
+  let queue;
+  let theme;
+  if(customQueue&&customQueue.length){
+    queue=oralShuffle([...customQueue]);
+    const thSet=new Set(queue.map(q=>q.theme));
+    theme=thSet.size===1?queue[0].theme:'MIX';
+  }else if(themeKey){
+    const pool=ORAL_QB.filter(q=>q.theme===themeKey);
+    if(!pool.length){showToast('Aucune question pour ce thème','err');return;}
+    queue=oralShuffle(pool).slice(0,Math.min(5,pool.length));
+    theme=themeKey;
+  }else{
+    showToast('Aucune question','err');return;
+  }
+  ORAL_SESSION={theme,queue,qIndex:0,phase:1,pointIdx:0,known:0,timer:null,tRemaining:0,sessionXP:0};
   oralOpenOv();
   oralShowQuestion();
+}
+let _oralSearchT=null;
+function oralOpenSingleQuestion(qid){
+  const q=ORAL_QB.find(x=>x.id===qid);
+  if(!q){showToast('Question introuvable','err');return;}
+  oralStartSession(null,[q]);
+}
+function clearExamBlancGlobalTimer(){
+  if(ORAL_SESSION&&ORAL_SESSION.examGlobalTimerId){
+    clearInterval(ORAL_SESSION.examGlobalTimerId);
+    ORAL_SESSION.examGlobalTimerId=null;
+  }
+}
+function examBlancUpdateGlobalTimerDisplay(){
+  const el=document.getElementById('oral-exam-global-timer');
+  if(!el||!ORAL_SESSION||ORAL_SESSION.mode!=='exam-blanc')return;
+  const s=Math.max(0,ORAL_SESSION.examSecsLeft||0);
+  const mm=String(Math.floor(s/60)).padStart(2,'0');
+  const ss=String(s%60).padStart(2,'0');
+  el.textContent=mm+':'+ss;
+}
+function finishExamBlancOral(timedOut){
+  if(!ORAL_SESSION||ORAL_SESSION.mode!=='exam-blanc')return;
+  if(ORAL_SESSION.timer){clearInterval(ORAL_SESSION.timer);ORAL_SESSION.timer=null;}
+  clearExamBlancGlobalTimer();
+  const started=ORAL_SESSION.examStartedAt||Date.now();
+  const dureeSecondes=Math.round((Date.now()-started)/1000);
+  const stats=ORAL_SESSION.moduleStats||{};
+  let bon=0,tot=0;
+  Object.values(stats).forEach(x=>{bon+=x.bon;tot+=x.total;});
+  const scoreGlobal=tot>0?bon/tot:0;
+  const scoreParModule={};
+  Object.entries(stats).forEach(([th,x])=>{scoreParModule[th]={bon:x.bon,total:x.total};});
+  S.examHistory=S.examHistory||[];
+  S.examHistory.push({date:new Date().toISOString(),scoreGlobal,scoreParModule,dureeSecondes});
+  while(S.examHistory.length>5)S.examHistory.shift();
+  S._examBlancPendingWrong=[...new Set(ORAL_SESSION.wrongQuestionIds||[])];
+  try{save();}catch(e){}
+  const payload={scoreGlobal,scoreParModule,dureeSecondes,timedOut:!!timedOut};
+  ORAL_SESSION=null;
+  oralRenderExamBlancResults(payload);
+}
+function oralRenderExamBlancResults(data){
+  const ov=ensureOralOv();
+  ov.classList.add('show');
+  ov.removeAttribute('inert');
+  document.body.style.overflow='hidden';
+  const pct=Math.round((data.scoreGlobal||0)*100);
+  const dur=data.dureeSecondes||0;
+  const dmm=String(Math.floor(dur/60)).padStart(2,'0');
+  const dss=String(dur%60).padStart(2,'0');
+  const pm=data.scoreParModule||{};
+  const order=(typeof ORAL_THEME_META!=='undefined'&&ORAL_THEME_META.length)
+    ?ORAL_THEME_META.map(m=>m.key).filter(k=>pm[k]!==undefined)
+    :Object.keys(pm);
+  const seen=new Set(order);
+  Object.keys(pm).forEach(k=>{if(!seen.has(k))order.push(k);});
+  const rows=order.map(themeKey=>{
+    const s=pm[themeKey];
+    const meta=(typeof ORAL_THEME_META!=='undefined'&&ORAL_THEME_META.length)?ORAL_THEME_META.find(m=>m.key===themeKey):null;
+    const name=meta?meta.label:themeKey;
+    const p=s.total>0?Math.round(s.bon/s.total*100):0;
+    const col=p<50?'var(--err)':p<75?'var(--warn)':'var(--ok)';
+    return`<tr><td>${eh(name)}</td><td>${p}%</td><td><div class="exam-mod-bar"><div class="exam-mod-fill" style="width:${p}%;background:${col}"></div></div></td></tr>`;
+  }).join('');
+  ov.innerHTML=`<div class="oral-ov-scroll exam-blanc-results">
+<div style="text-align:center;padding:20px 0 12px">
+  <div style="font-size:12px;color:var(--t3)">Examen blanc oral</div>
+  <div style="font-size:52px;font-weight:900;color:var(--t1);line-height:1">${pct}%</div>
+  <div style="font-size:13px;color:var(--t2)">Score global</div>
+  <div style="margin-top:12px;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--t3)">Durée réelle : ${dmm}:${dss}</div>
+  ${data.timedOut?'<div style="color:var(--warn);font-size:12px;margin-top:10px">Temps imparti écoulé — fin automatique.</div>':''}
+</div>
+<table class="exam-blanc-mod-table" aria-label="Scores par module">
+  <thead><tr><th>Module</th><th>Score</th><th></th></tr></thead>
+  <tbody>${rows||'<tr><td colspan="3" style="color:var(--t3);text-align:center">Aucune question complétée</td></tr>'}</tbody>
+</table>
+<div style="display:flex;flex-direction:column;gap:10px;max-width:440px;margin:20px auto 0;width:100%">
+  <button type="button" class="btn-main" onclick="startExamBlancErrorReview()">Revoir mes erreurs</button>
+  <button type="button" class="btn-ghost" onclick="closeExamBlancResults()">Fermer</button>
+</div>
+</div>`;
+}
+function closeExamBlancResults(){
+  oralCloseOv();
+  try{renderOralMode();}catch(e){}
+}
+function startExamBlancErrorReview(){
+  const ids=S._examBlancPendingWrong||[];
+  const qs=[...new Set(ids)].map(id=>ORAL_QB.find(q=>q.id===id)).filter(Boolean);
+  S._examBlancPendingWrong=null;
+  try{save();}catch(e){}
+  oralCloseOv();
+  if(!qs.length){
+    startSmartSession();
+    return;
+  }
+  oralStartSession(null,qs);
+}
+function startExamBlancOral(){
+  clearExamBlancGlobalTimer();
+  const queue=buildExamBlancQuestions();
+  if(!queue.length){showToast('Banque orale indisponible pour l’examen blanc.','err');return;}
+  const moduleStats={};
+  queue.forEach(q=>{
+    if(!moduleStats[q.theme])moduleStats[q.theme]={bon:0,total:0};
+  });
+  ORAL_SESSION={
+    theme:'EXAM_BLANC',
+    queue,
+    qIndex:0,
+    phase:1,
+    pointIdx:0,
+    known:0,
+    timer:null,
+    tRemaining:0,
+    sessionXP:0,
+    mode:'exam-blanc',
+    skipGamification:false,
+    examStartedAt:Date.now(),
+    examSecsLeft:2700,
+    examGlobalTimerId:null,
+    moduleStats,
+    wrongQuestionIds:[]
+  };
+  oralOpenOv();
+  ORAL_SESSION.examGlobalTimerId=setInterval(()=>{
+    if(!ORAL_SESSION||ORAL_SESSION.mode!=='exam-blanc')return;
+    ORAL_SESSION.examSecsLeft--;
+    examBlancUpdateGlobalTimerDisplay();
+    if(ORAL_SESSION.examSecsLeft<=0){
+      clearExamBlancGlobalTimer();
+      finishExamBlancOral(true);
+    }
+  },1000);
+  oralShowQuestion();
+  examBlancUpdateGlobalTimerDisplay();
+}
+function oralOnSearchInput(){
+  clearTimeout(_oralSearchT);
+  _oralSearchT=setTimeout(()=>{
+    const out=document.getElementById('oral-search-results');
+    const inp=document.getElementById('oral-search');
+    if(!out||!inp)return;
+    const snip=inp.value.trim();
+    if(snip.length<2){out.innerHTML='';return;}
+    const hits=searchOralByArticleSnippet(snip);
+    if(!hits.length){out.innerHTML='<div class="oral-search-empty">Aucune question orale pour cet article.</div>';return;}
+    out.innerHTML='<div class="oral-search-hd">Questions liées</div>'+hits.slice(0,14).map(qo=>{
+      const arts=(qo.articles||[]).map(a=>eh(a)).join(' · ');
+      const qq=qo.q.length>100?qo.q.slice(0,98)+'…':qo.q;
+      return`<button type="button" class="oral-hit-row" onclick="oralOpenSingleQuestion('${qo.id}')"><div class="oral-hit-arts">${arts}</div><div class="oral-hit-q">${eh(qq)}</div></button>`;
+    }).join('');
+  },200);
 }
 function oralUpdateChrono(){
   const el=document.getElementById('oral-chrono');
@@ -1255,6 +2459,7 @@ function oralShowQuestion(){
       oralReady();
     }
   },1000);
+  if(ORAL_SESSION.mode==='exam-blanc')examBlancUpdateGlobalTimerDisplay();
 }
 function oralReady(){
   if(!ORAL_SESSION)return;
@@ -1281,7 +2486,16 @@ function oralEnterPhase3(){
   S.oral.done[q.id]=true;
   const prev=S.oral.scores[q.id]||0;
   S.oral.scores[q.id]=Math.max(prev,ORAL_SESSION.known);
-  addXP(xp);
+  if(ORAL_SESSION.mode==='exam-blanc'){
+    const totPts=q.points.length;
+    const st=ORAL_SESSION.moduleStats[q.theme];
+    if(st){
+      st.total++;
+      if(ORAL_SESSION.known>=totPts)st.bon++;
+    }
+    if(ORAL_SESSION.known<totPts)ORAL_SESSION.wrongQuestionIds.push(q.id);
+  }
+  if(!ORAL_SESSION.skipGamification)addXP(xp);
   oralRenderOv();
 }
 function oralNextQuestion(){
@@ -1291,12 +2505,17 @@ function oralNextQuestion(){
   else oralShowQuestion();
 }
 function oralFinishSession(){
+  if(ORAL_SESSION&&ORAL_SESSION.mode==='exam-blanc'){
+    finishExamBlancOral(false);
+    return;
+  }
   ORAL_SESSION=null;
   oralCloseOv();
   try{renderOralMode();}catch(e){}
   showToast('Session orale terminée','ok');
 }
 function oralAbortSession(){
+  if(ORAL_SESSION&&ORAL_SESSION.mode==='exam-blanc')clearExamBlancGlobalTimer();
   if(ORAL_SESSION&&ORAL_SESSION.timer){clearInterval(ORAL_SESSION.timer);ORAL_SESSION.timer=null;}
   ORAL_SESSION=null;
   oralCloseOv();
@@ -1309,8 +2528,12 @@ function oralRenderOv(){
   const q=Sess.queue[Sess.qIndex];
   const nq=Sess.queue.length;
   const totPts=q.points.length;
+  const examBanner=Sess.mode==='exam-blanc'
+    ?`<div style="text-align:center;margin-bottom:10px;font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;color:var(--warn)">Examen blanc · <span id="oral-exam-global-timer">45:00</span></div>`
+    :'';
   if(Sess.phase===1){
     ov.innerHTML=`<div class="oral-ov-scroll">
+${examBanner}
 <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0 8px;width:100%;max-width:440px;margin:0 auto">
   <button type="button" onclick="oralAbortSession()" style="color:var(--t3);font-size:13px;background:none;border:none;cursor:pointer">← Quitter</button>
   <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--t3)">${Sess.qIndex+1} / ${nq}</span>
@@ -1321,11 +2544,13 @@ function oralRenderOv(){
 <div style="font-size:11px;color:var(--t3);text-align:center;margin-bottom:20px">secondes · préparation orale</div>
 <button type="button" class="btn-main" style="max-width:440px;width:100%;margin:0 auto;display:block" onclick="oralReady()">Prêt — Voir les attendus</button>
 </div>`;
+    if(Sess.mode==='exam-blanc')examBlancUpdateGlobalTimerDisplay();
     return;
   }
   if(Sess.phase===2){
     const pi=Sess.pointIdx;
     ov.innerHTML=`<div class="oral-ov-scroll">
+${examBanner}
 <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0 8px;max-width:440px;margin:0 auto;width:100%">
   <button type="button" onclick="oralAbortSession()" style="color:var(--t3);font-size:13px;background:none;border:none;cursor:pointer">← Quitter</button>
   <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--t3)">Point ${pi+1} / ${totPts}</span>
@@ -1337,21 +2562,25 @@ function oralRenderOv(){
   <button type="button" class="btn-ghost" onclick="oralPointAnswer(false)">Je ne savais pas</button>
 </div>
 </div>`;
+    if(Sess.mode==='exam-blanc')examBlancUpdateGlobalTimerDisplay();
     return;
   }
   const xpQ=Sess.known*10;
+  const hideXp=!!Sess.skipGamification;
   ov.innerHTML=`<div class="oral-ov-scroll">
+${Sess.mode==='exam-blanc'?examBanner:''}
 <div style="text-align:center;padding:16px 0 8px">
   <div style="font-family:'Syne',sans-serif;font-size:20px;font-weight:900;color:var(--t1)">Question ${Sess.qIndex+1} / ${nq}</div>
   <div style="font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--t2);margin-top:8px">Points validés : ${Sess.known} / ${totPts}</div>
-  <div style="font-family:'JetBrains Mono',monospace;font-size:18px;color:var(--gold);margin-top:10px">+${xpQ} XP <span style="font-size:12px;color:var(--t3)">(10 XP / point « su »)</span></div>
-  <div style="font-size:12px;color:var(--t3);margin-top:14px">Session cumulée : <strong style="color:var(--t1)">${Sess.sessionXP} XP</strong></div>
+  ${hideXp?'':`<div style="font-family:'JetBrains Mono',monospace;font-size:18px;color:var(--gold);margin-top:10px">+${xpQ} XP <span style="font-size:12px;color:var(--t3)">(10 XP / point « su »)</span></div>
+  <div style="font-size:12px;color:var(--t3);margin-top:14px">Session cumulée : <strong style="color:var(--t1)">${Sess.sessionXP} XP</strong></div>`}
 </div>
 <div style="display:flex;flex-direction:column;gap:10px;max-width:440px;margin:20px auto 0;width:100%">
   ${Sess.qIndex+1<nq?`<button type="button" class="btn-main" onclick="oralNextQuestion()">Question suivante</button>`:''}
   <button type="button" class="${Sess.qIndex+1<nq?'btn-ghost':'btn-main'}" onclick="oralFinishSession()">${Sess.qIndex+1<nq?'Terminer la session':'Terminer'}</button>
 </div>
 </div>`;
+  if(Sess.mode==='exam-blanc')examBlancUpdateGlobalTimerDisplay();
 }
 function escapeHtml(s){return eh(s);}
 function updateDueCount(){
@@ -1478,9 +2707,18 @@ function renderRevThemes(){
   },150);
 }
 
+function renderDueFlashWrap(){
+  const wrap=document.getElementById('fiches-due-wrap');
+  if(!wrap)return;
+  const due=typeof FSRS!=='undefined'&&FSRS.getDueFlashcards?FSRS.getDueFlashcards(S.flashFsrs):[];
+  if(!due.length){wrap.innerHTML='';return;}
+  const n=due.length;
+  wrap.innerHTML=`<button type="button" class="btn btn-p btn-full" style="margin-top:8px;font-size:13px;font-weight:700" onclick="startDueSession()">🎯 ${n} fiche${n>1?'s':''} à réviser aujourd’hui</button>`;
+}
 
 function renderBubbles(){
   const grid=document.getElementById('bubble-grid');if(!grid)return;
+  renderDueFlashWrap();
   grid.style.cssText='display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:0;box-sizing:border-box;width:100%;';
   const search=(document.getElementById('fiches-search')?.value||'').toLowerCase();
 
@@ -1506,7 +2744,8 @@ function renderBubbles(){
     :FB;
 
   if(!filtered.length){
-    grid.innerHTML=`<div class="empty-state"><span class="empty-state-em">🔍</span>Aucune fiche pour "${search}"</div>`;
+    grid.innerHTML=`<div class="empty-state"><span class="empty-state-em">🔍</span>Aucune fiche pour "${eh(search)}"</div>`;
+    renderDueFlashWrap();
     return;
   }
 
@@ -1541,15 +2780,16 @@ function renderBubbles(){
           :isLearning?`<div class="ft-dot"></div>`
           :`<div class="ft-lock"></div>`}
       </div>
-      <div class="ft-em">${f.em}</div>
-      <div class="ft-nm">${shortNm(f.nm)}</div>
-      <div class="ft-qual" style="background:${color}22;color:${color}">${f.qual}</div>
+      <div class="ft-em">${eh(f.em)}</div>
+      <div class="ft-nm">${eh(shortNm(f.nm))}</div>
+      <div class="ft-qual" style="background:${color}22;color:${color}">${eh(f.qual)}</div>
     </div>`;
   };
 
   /* Mode recherche → grille plate */
   if(search){
     gridEl.innerHTML=`<div class="ft-grid">${filtered.map((f,i)=>tile(f,i,FAMILIES[f.fam])).join('')}</div>`;
+    renderDueFlashWrap();
     return;
   }
 
@@ -1577,6 +2817,7 @@ function renderBubbles(){
     </div>`;
   });
   gridEl.innerHTML=html;
+  renderDueFlashWrap();
   },150);
 }
 
@@ -1584,6 +2825,11 @@ function renderBubbles(){
 
 function openFiche(id){
   const f=FB.find(x=>x.id===id);if(!f)return;
+  S._ficheOpenId=id;
+  if(S.fsDueSession?.ids?.length&&!S.fsDueSession.ids.includes(id)){
+    S.fsDueSession=null;
+    try{save();}catch(e){}
+  }
   /* FIX v49 — déplacer fiche-ov hors de p-revision (display:none) vers #app */
   (function ensureGlobal(){
     const ov=document.getElementById('fiche-ov');
@@ -1635,6 +2881,7 @@ function openFiche(id){
         <span class="fo-status-lbl">${b.lbl}</span>
       </button>`).join('')}
   </div>
+  <div class="fiche-next-review" id="fiche-next-review-label"></div>
 
   <!-- ÉLÉMENTS CONSTITUTIFS -->
   <div class="fo-section">
@@ -1690,9 +2937,22 @@ function openFiche(id){
     </div>`;
   }
 
-  h+=`<button class="btn btn-ghost btn-full" style="margin-top:16px" onclick="closeFiche()">Fermer</button>`;
+  let dueFoot='';
+  if(S.fsDueSession?.ids?.length){
+    const ix=S.fsDueSession.ids.indexOf(id);
+    if(ix>=0){
+      const tot=S.fsDueSession.ids.length,pos=ix+1;
+      dueFoot=`<div style="display:flex;flex-direction:column;gap:8px;margin-top:14px;width:100%">
+        <button type="button" class="btn btn-p btn-full" onclick="nextDueFiche()">Fiche suivante (${pos}/${tot})</button>
+        <button type="button" class="btn btn-ghost btn-full" onclick="endDueFicheSession(false)">Terminer la session</button>
+      </div>`;
+    }
+  }
+  h+=dueFoot+`<button class="btn btn-ghost btn-full" style="margin-top:16px" onclick="closeFiche()">Fermer</button>`;
 
   const _fb=document.getElementById('fiche-body');if(_fb)_fb.innerHTML=h;
+  const _fnr=document.getElementById('fiche-next-review-label');
+  if(_fnr)_fnr.textContent=ficheNextReviewLabel(id);
   const _fo=document.getElementById('fiche-ov');if(_fo)_fo.style.display='flex';
   document.body.style.overflow='hidden';
 }
@@ -1702,10 +2962,29 @@ function closeFiche(){
   if(ov){ov.style.display='none';ov.style.alignItems='flex-end';}
   document.body.style.overflow='';
 }
+function ficheNextReviewLabel(ficheId) {
+  const card = S.flashFsrs?.[ficheId];
+  const nextReview = card?.nextReview ?? card?.due;
+  if (nextReview == null) return '';
+  const days = Math.ceil(
+    (new Date(nextReview) - Date.now()) / 86400000
+  );
+  if (days <= 0) return 'Reproposée aujourd\'hui';
+  if (days === 1) return 'Prochaine révision demain';
+  return `Prochaine révision dans ${days} jour${days > 1 ? 's' : ''}`;
+}
 function setFiche(id,s){
   const p=S.fs[id];
-  if(s==='m'&&p!=='m'){addXP(15);showToast('+15 XP — Fiche maîtrisée !','ok');}
-  S.fs[id]=s;save();openFiche(id);renderBubbles();
+  if(s==='m'&&p!=='m'&&!S._jjRevision){addXP(15);showToast('+15 XP — Fiche maîtrisée !','ok');}
+  S.fs[id]=s;
+  if(typeof FSRS!=='undefined'&&FSRS.reviewFlashcard){
+    if(s==='m')FSRS.reviewFlashcard(id,true);
+    else if(s==='s')FSRS.reviewFlashcard(id,false);
+  }
+  save();openFiche(id);renderBubbles();
+  const label = ficheNextReviewLabel(id);
+  const el = document.getElementById('fiche-next-review-label');
+  if (el) el.textContent = label;
 }
 
 /* ─── ADAPTIVE DIFFICULTY ─── */
@@ -2138,14 +3417,14 @@ function renderProfil(){
   const cardStreak=el('pr-card-streak');
   const cardSess=el('pr-card-sessions');
   const cardRecord=el('pr-card-record');
-  if(cardBadge)cardBadge.innerHTML=(typeof GRADE_SVGS!=='undefined'&&GRADE_SVGS[g.name])||g.icon;
+  if(cardBadge)cardBadge.innerHTML=gradeSvg(g);
   if(cardGrade)cardGrade.textContent=g.name;
   if(cardName)cardName.textContent=S.user.name||'Officier';
   if(cardXp)cardXp.textContent=(S.user.xp||0).toLocaleString('fr-FR')+' XP';
   if(cardStreak)cardStreak.textContent=S.user.streak||0;
   if(cardSess)cardSess.textContent=S.user.sessionsDone||0;
   if(cardRecord)cardRecord.textContent=S.user.streakRecord||0;
-  if(el('pr-grade-ico'))el('pr-grade-ico').innerHTML=GRADE_SVGS[g.name]||g.icon;
+  if(el('pr-grade-ico'))el('pr-grade-ico').innerHTML=gradeSvg(g);
   if(el('pr-name'))el('pr-name').textContent=eh(S.user.name);
   if(el('pr-grade'))el('pr-grade').textContent=g.name;
   if(el('pr-xp-lbl'))el('pr-xp-lbl').textContent=S.user.xp+(n?' / '+n.min:'')+' XP';
@@ -2155,10 +3434,10 @@ function renderProfil(){
   const ring=el('pr-xp-ring');
   if(ring){const total=276.5;ring.style.transition='none';ring.style.strokeDashoffset=total;
     requestAnimationFrame(()=>requestAnimationFrame(()=>{ring.style.transition='stroke-dashoffset .8s cubic-bezier(.34,1.56,.64,1)';ring.style.strokeDashoffset=total*(1-pct/100);}));}
-  if(el('pr-streak'))el('pr-streak').innerHTML=S.user.streak+'🔥';
+  if(el('pr-streak'))el('pr-streak').innerHTML='<span class="pr-streak-num">'+(S.user.streak||0)+'</span>'+PROFIL_STREAK_SVG;
   if(el('pr-lessons'))el('pr-lessons').textContent=Object.keys(S.lessons).length;
   if(el('pr-qcm'))el('pr-qcm').textContent=Object.keys(S.qcm.cards).length;
-  if(el('pr-streak-v'))el('pr-streak-v').textContent=(S.user.streakRecord||0)+'🔥';
+  if(el('pr-streak-v'))el('pr-streak-v').innerHTML='<span>'+(S.user.streakRecord||0)+'</span>'+PROFIL_STREAK_SVG;
   const vals=Object.values(S.qcm.cards);
   const totalOk=vals.reduce((a,c)=>a+(c.ok||0),0);
   const totalAll=vals.reduce((a,c)=>a+(c.ok||0)+(c.ko||0),0);
@@ -2205,6 +3484,11 @@ function renderProfil(){
       <div class="readiness-detail">${mastered}/${totalQ} QCM maîtrisés · ${lessonsDone}/${totalLessons} leçons</div>
     `;
   }
+  const lacEl=document.getElementById('pr-module-lacunes');
+  if(lacEl)lacEl.innerHTML=renderModuleLacunesOralHtml();
+  const exHist=document.getElementById('pr-exam-history');
+  if(exHist)exHist.innerHTML=renderExamHistoryHtml();
+  renderRevisionPlan();
 }
 function renderActivityBars(){
   const el=document.getElementById('pr-activity-bars');if(!el)return;
@@ -2242,9 +3526,9 @@ function renderRadar(id,labels,values){
 }
 function showGrades(){
   const html=`<div style="padding:18px">
-    <div class="font-title fw-800 text-xl mb16">🏅 Grades Police Nationale</div>
+    <div class="font-title fw-800 text-xl mb16">Parcours habilitation OPJ</div>
     ${GRADES.map(gr=>`<div style="display:flex;align-items:center;gap:12px;padding:9px;background:${S.user.xp>=gr.min?'var(--accent-glow)':'transparent'};border-radius:var(--r-m);margin-bottom:4px">
-      <span class="grade-table-svg" style="display:flex;align-items:center;justify-content:center;width:40px;height:40px;flex-shrink:0">${GRADE_SVGS[gr.name]||gr.icon}</span>
+      <span class="grade-table-svg" style="display:flex;align-items:center;justify-content:center;width:40px;height:40px;flex-shrink:0">${gradeSvg(gr)}</span>
       <div style="flex:1"><div class="text-sm fw-700" style="color:${S.user.xp>=gr.min?'var(--t1)':'var(--t3)'}">${gr.name}</div><div class="text-xs text-muted font-mono">${gr.min} XP requis</div></div>
       ${S.user.xp>=gr.min?'<span class="text-ok">✓</span>':''}
     </div>`).join('')}
@@ -2474,7 +3758,7 @@ const LP={
 
 /* ═══ PFM — FICHE PROCÉDURE MODAL ═══ */
 /* NOTE: f.def, r.l, r.v, f.piege in PFM are static editorial text — not escaped */
-const PFM={open(id){const f=PB.find(x=>x.id===id);if(!f)return;const rows=Array.isArray(f.tab)?f.tab:[];let h=`<span class="bs-pill"></span><div class="bs-hd"><div class="bs-hd-row"><div style="flex:1"><div style="font-size:11px;color:var(--t3);font-family:'JetBrains Mono',monospace;margin-bottom:3px">${eh(f.ref)}</div><div style="font-size:17px;font-weight:900;color:var(--t1)">${eh(f.nm)}</div></div><button class="bs-close" onclick="PFM.close()">✕</button></div></div><div class="bs-bd"><div style="font-size:13px;color:var(--t2);line-height:1.65;margin-bottom:14px;padding:11px 13px;background:var(--bg-2);border-radius:10px">${f.def||''}</div>`;rows.forEach(r=>{h+=`<div class="pr-row"><div class="pr-l">${r.l}</div><div class="pr-v">${r.v}</div></div>`;});if(f.piege)h+=`<div class="fm-piege" style="margin-top:14px"><div class="fm-piege-l">⚠ Piège</div><div style="font-size:12px;color:var(--t2);line-height:1.6">${f.piege}</div></div>`;h+=`</div><div class="bs-ft"><button class="btn-prim" onclick="PFM.close()">Fermer</button></div>`;const _pfb=document.getElementById('pf-body');if(_pfb)_pfb.innerHTML=h;const _pfo=document.getElementById('pf-ov');if(_pfo)_pfo.style.display='flex';document.body.style.overflow='hidden';},close(){const _pfo2=document.getElementById('pf-ov');if(_pfo2)_pfo2.style.display='none';document.body.style.overflow='';try{renderProcList();}catch(e){}}};
+const PFM={open(id){const f=PB.find(x=>x.id===id);if(!f)return;const rows=Array.isArray(f.tab)?f.tab:[];let h=`<span class="bs-pill"></span><div class="bs-hd"><div class="bs-hd-row"><div style="flex:1"><div style="font-size:11px;color:var(--t3);font-family:'JetBrains Mono',monospace;margin-bottom:3px">${eh(f.ref)}</div><div style="font-size:17px;font-weight:900;color:var(--t1)">${eh(f.nm)}</div></div><button class="bs-close" onclick="PFM.close()">✕</button></div></div><div class="bs-bd"><div style="font-size:13px;color:var(--t2);line-height:1.65;margin-bottom:14px;padding:11px 13px;background:var(--bg-2);border-radius:10px">${eh(f.def||'')}</div>`;rows.forEach(r=>{h+=`<div class="pr-row"><div class="pr-l">${eh(r.l)}</div><div class="pr-v">${eh(r.v)}</div></div>`;});if(f.piege)h+=`<div class="fm-piege" style="margin-top:14px"><div class="fm-piege-l">⚠ Piège</div><div style="font-size:12px;color:var(--t2);line-height:1.6">${eh(f.piege)}</div></div>`;h+=`</div><div class="bs-ft"><button class="btn-prim" onclick="PFM.close()">Fermer</button></div>`;const _pfb=document.getElementById('pf-body');if(_pfb)_pfb.innerHTML=h;const _pfo=document.getElementById('pf-ov');if(_pfo)_pfo.style.display='flex';document.body.style.overflow='hidden';},close(){const _pfo2=document.getElementById('pf-ov');if(_pfo2)_pfo2.style.display='none';document.body.style.overflow='';try{renderProcList();}catch(e){}}};
 
 function renderQDJ(){
   const el=document.getElementById('h-qdj');if(!el)return;
@@ -2505,7 +3789,12 @@ function renderQDJ(){
 
   if(stored){
     const ok=stored.correct;
-    const expl=qOrig.expl?('<div class="qdj-expl">'+qOrig.expl+'</div>'):'';
+    const explInner=qOrig.expl
+      ? (typeof DOMPurify !== 'undefined' && DOMPurify.sanitize
+          ? DOMPurify.sanitize(String(qOrig.expl), { ALLOWED_TAGS: ['strong', 'em', 'br'], ALLOWED_ATTR: [] })
+          : eh(String(qOrig.expl).replace(/<[^>]+>/g, '')))
+      : '';
+    const expl=explInner?('<div class="qdj-expl">'+explInner+'</div>'):'';
     const ficheBtn=qdjFicheId
       ?'<button type="button" class="qdj-fiche-btn" onclick="openFiche(\''+qdjFicheId+'\')">📖 Voir la fiche infraction</button>'
       :'';
@@ -2544,8 +3833,17 @@ function answerQDJ(answer){
   const ok=i===shuffledC;
   const today=new Date().toDateString();
   try{localStorage.setItem('opj_qdj',JSON.stringify({date:today,correct:ok,answer:i}));}catch(e){}
-  if(ok){addXP(20);S.tq++;S.dq++;S.tcDone++;S.dcDone++;save();showToast('+20 XP — Question du jour !','ok');}
-  else{S.tq++;S.dq++;save();}
+  if(ok&&new Date().getHours()<9){
+    S.earlyBirdCount=(S.earlyBirdCount||0)+1;
+  }
+  const bonusEarlyBird=new Date().getHours()<9?10:0;
+  const xpGained=(ok?20:5)+bonusEarlyBird;
+  addXP(xpGained);
+  S.tq++;S.dq++;if(ok){S.tcDone++;S.dcDone++;}
+  save();
+  const bonusTxt=bonusEarlyBird?' · +'+(bonusEarlyBird)+' XP bonus (avant 9h)':'';
+  if(ok)showToast('+'+xpGained+' XP — Question du jour !'+bonusTxt,'ok');
+  else showToast('+'+xpGained+' XP — participation enregistrée'+bonusTxt,'ok');
   renderQDJ();
 }
 
@@ -2586,11 +3884,13 @@ const CT={
     ]
   }
 };
+Object.assign(CT, window.__OPJ_CT_EXTRA__ || {});
+
 const C={cur:null,
-  start(t){C.cur=t;const tpl=CT[t];document.getElementById('cm').style.display='none';document.getElementById('ct').style.display='none';document.getElementById('ca').style.display='block';document.getElementById('ca-bg').textContent=t.toUpperCase();document.getElementById('ca-ti').textContent=tpl.ti;document.getElementById('ca-st').textContent=tpl.st;document.getElementById('ca-r').style.display='none';window.scrollTo({top:0,behavior:'instant'});document.getElementById('ca-f').innerHTML=tpl.fs.map(f=>`<div class="mb12"><div class="ct-l">${f.l}${f.r?' <span style="color:var(--err)">*</span>':''}</div>${f.t==='ta'?`<textarea class="ct-i" id="${f.id}" rows="3" placeholder="${f.h||''}"></textarea>`:f.t==='dt'?`<input type="datetime-local" class="ct-i" id="${f.id}">`:`<input type="text" class="ct-i" id="${f.id}" placeholder="${f.h||''}">`}</div>`).join('')},
-  validate(){const tpl=CT[C.cur];let ok=true,f=0,t=0;tpl.fs.forEach(x=>{const el=document.getElementById(x.id);if(x.r){t++;if(!el.value.trim()){el.classList.add('err');el.classList.remove('val');ok=false}else{el.classList.remove('err');el.classList.add('val');f++}}});const r=document.getElementById('ca-r');r.style.display='block';r.scrollIntoView({behavior:'smooth'});if(ok){S.cv++;addXP(25);save();r.innerHTML=`<div class="cd" style="border-color:var(--ok)"><div class="ex-h ex-ok">✓ Cartouche validée — ${f}/${t} champs</div><div class="ex-t">+25 XP</div></div>`}else r.innerHTML=`<div class="cd" style="border-color:var(--err)"><div class="ex-h ex-ko">✗ Incomplète — ${f}/${t} champs</div></div>`},
+  start(t){C.cur=t;const tpl=CT[t];if(!tpl){showToast('Cartouche indisponible','err');return;}document.getElementById('cm').style.display='none';document.getElementById('ct').style.display='none';document.getElementById('ca').style.display='block';document.getElementById('ca-bg').textContent=t.toUpperCase();document.getElementById('ca-ti').textContent=tpl.ti;document.getElementById('ca-st').textContent=tpl.st;document.getElementById('ca-r').style.display='none';window.scrollTo({top:0,behavior:'instant'});document.getElementById('ca-f').innerHTML=tpl.fs.map(f=>`<div class="mb12"><div class="ct-l">${eh(f.l)}${f.r?' <span style="color:var(--err)">*</span>':''}</div>${f.t==='ta'?`<textarea class="ct-i" id="${eh(f.id)}" rows="3" placeholder="${eh(f.h||'')}"></textarea>`:f.t==='dt'?`<input type="datetime-local" class="ct-i" id="${eh(f.id)}">`:`<input type="text" class="ct-i" id="${eh(f.id)}" placeholder="${eh(f.h||'')}">`}</div>`).join('')},
+  validate(){const tpl=CT[C.cur];let ok=true,f=0,t=0;tpl.fs.forEach(x=>{const el=document.getElementById(x.id);if(x.r){t++;if(!el.value.trim()){el.classList.add('err');el.classList.remove('val');ok=false}else{el.classList.remove('err');el.classList.add('val');f++}}});const r=document.getElementById('ca-r');r.style.display='block';r.scrollIntoView({behavior:'smooth'});if(ok){S.cv++;S.pvDone=(S.pvDone||0)+1;addXP(25);save();r.innerHTML=`<div class="cd" style="border-color:var(--ok)"><div class="ex-h ex-ok">✓ Cartouche validée — ${f}/${t} champs</div><div class="ex-t">+25 XP</div></div>`}else r.innerHTML=`<div class="cd" style="border-color:var(--err)"><div class="ex-h ex-ko">✗ Incomplète — ${f}/${t} champs</div></div>`},
   timeline(){document.getElementById('cm').style.display='none';document.getElementById('ca').style.display='none';document.getElementById('ct').style.display='block';window.scrollTo({top:0,behavior:'instant'});const n=new Date();n.setMinutes(n.getMinutes()-n.getTimezoneOffset());document.getElementById('tl-start').value=n.toISOString().slice(0,16)},
-  genTL(){const s=document.getElementById('tl-start').value,r=document.getElementById('tl-reg').value;if(!s){showToast('Saisissez une heure','ko');return}const st=new Date(s),evs=[],fmt=d=>d.toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}),add=(d,h)=>new Date(d.getTime()+h*36e5);evs.push({t:fmt(st),e:"Début GAV — Appréhension",a:0});evs.push({t:fmt(st),e:"Notification IMMÉDIATE des droits (art. 63-1)",a:1});evs.push({t:fmt(st),e:"Avis IMMÉDIAT au PR (art. 63 al.2)",a:1});evs.push({t:fmt(st),e:"Avocat SANS délai (loi 22/04/2024)",a:1});evs.push({t:fmt(add(st,24)),e:"Fin 24h — Prolongation possible (PR écrite et motivée)",a:1});if(r!=='dc'){evs.push({t:fmt(add(st,48)),e:"Fin 48h — JLD obligatoire (art. 706-88)",a:1});evs.push({t:fmt(add(st,72)),e:"Fin 72h — 4ème période si autorisée JLD",a:1});evs.push({t:fmt(add(st,96)),e:"FIN MAXIMALE 96h (criminalité organisée)",a:1})}else evs.push({t:fmt(add(st,48)),e:"FIN MAXIMALE 48h (droit commun)",a:1});if(r==='terr'){evs.push({t:fmt(add(st,120)),e:"120h — 5ème période (art. 706-88-1)",a:1});evs.push({t:fmt(add(st,144)),e:"FIN MAXIMALE ABSOLUE 144h (terrorisme)",a:1})}document.getElementById('tl-out').innerHTML=`<div class="st">${r==='dc'?'Droit commun':r==='co'?'Criminalité organisée':'Terrorisme'}</div><div class="tl">${evs.map(e=>`<div class="tl-i${e.a?' al':''}"><div class="tl-dot"></div><div class="tl-time">${e.t}</div><div class="tl-ev">${e.e}</div></div>`).join('')}</div>`},
+  genTL(){const s=document.getElementById('tl-start').value,r=document.getElementById('tl-reg').value;if(!s){showToast('Saisissez une heure','ko');return}const st=new Date(s),evs=[],fmt=d=>d.toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}),add=(d,h)=>new Date(d.getTime()+h*36e5),push=(d,txt,imp)=>evs.push({t:fmt(d),e:txt,a:imp?1:0});push(st,'Début GAV — privation de liberté / appréhension',0);push(st,'Notification IMMÉDIATE des droits (art. 63-1 CPP)',1);push(st,'Avis IMMÉDIAT au procureur (art. 63 al.2 CPP)',1);push(st,'Entretien avocat sans délai (loi du 22/04/2024)',1);push(add(st,24),'Fin 1ère période 24h — prolongation possible (PR, écrit motivé, art. 63-3)',1);if(r==='dc'){push(add(st,48),'FIN MAXIMALE 48h — droit commun (art. 63-3 CPP)',1)}else if(r==='co'){push(add(st,48),'48h — au-delà : prolongations sous contrôle du JLD (art. 706-88 CPP)',1);push(add(st,72),'72h — 3e période (JLD)',1);push(add(st,96),'FIN MAXIMALE 96h — criminalité organisée (706-88 CPP)',1)}else if(r==='terr'){push(add(st,48),'48h — prolongations dérogatoires : JLD (terrorisme, art. 706-88-1 CPP)',1);push(add(st,72),'72h — contrôle JLD',1);push(add(st,96),'96h — contrôle JLD',1);push(add(st,120),'120h — 5e période (JLD)',1);push(add(st,144),'FIN MAXIMALE 144h — terrorisme (art. 706-88-1 CPP)',1)}const regimeLabel=r==='dc'?'Droit commun (48h max)':r==='co'?'Criminalité organisée (96h max, JLD >48h)':'Terrorisme (144h max, 706-88-1 CPP)';document.getElementById('tl-out').innerHTML=`<div class="st">${regimeLabel}</div><div class="tl">${evs.map(e=>`<div class="tl-i${e.a?' al':''}"><div class="tl-dot"></div><div class="tl-time">${e.t}</div><div class="tl-ev">${e.e}</div></div>`).join('')}</div>`},
   back(){document.getElementById('cm').style.display='block';document.getElementById('ca').style.display='none';document.getElementById('ct').style.display='none';window.scrollTo({top:0,behavior:'instant'})}
 };
 
@@ -2641,7 +3941,7 @@ function renderAnnalesList(){
           ${done?`<span class="ann-done-badge">✓ Traité</span>`:''}
           ${a.coeff?`<span class="ann-coeff" style="color:${COEFF_COLORS[coeff]||'var(--t3)'}">Coeff ${a.coeff}</span>`:''}
         </div>
-        <div class="ann-card-title">${a.titre}</div>
+        <div class="ann-card-title">${eh(a.titre)}</div>
         <div class="ann-card-meta" style="display:flex;flex-wrap:wrap;
           align-items:center;gap:6px;margin-top:4px;">
           ${a.duree?`<span style="color:var(--t3);font-size:10px;
@@ -2655,7 +3955,7 @@ function renderAnnalesList(){
             font-family:'JetBrains Mono',monospace;
             color:var(--t2);
             white-space:nowrap;
-          ">${m}</span>`).join('')}
+          ">${eh(m)}</span>`).join('')}
         </div>
       </div>
       <div class="ann-card-arr">›</div>
@@ -4319,6 +5619,31 @@ const BADGE_DEFS=[
   {id:'b18',emoji:'🎓',name:'OPJ Élite',desc:'Toutes les leçons vues',cond:()=>{const t=CHAPTERS.reduce((a,c)=>a+c.lessons.length,0);return Object.keys(S.lessons).length>=t;}},
   {id:'b19',emoji:'🌙',name:'Noctambule',desc:'Session réalisée après 22h',cond:()=>false},// déclenchée manuellement
   {id:'b20',emoji:'⭐',name:'500 XP',desc:'500 XP gagnés',cond:()=>S.user.xp>=500},
+  {id:'flag_master',emoji:'🚨',name:'Maître de la Flagrance',desc:'Module oral 2 — taux ≥ 100 %',cond:()=>(S.oral?.module_2?.rate||0)>=1},
+  {id:'gav_guru',emoji:'🛡️',name:'Gardien des Droits',desc:'Module oral 8 — taux ≥ 100 %',cond:()=>(S.oral?.module_8?.rate||0)>=1},
+  {id:'cdo_specialist',emoji:'🎯',name:'Chasseur de CDO',desc:'Module oral 7 — taux ≥ 100 %',cond:()=>(S.oral?.module_7?.rate||0)>=1},
+  {id:'pv_writer',emoji:'✍️',name:'Rédacteur Confirmé',desc:'8 cartouches PV validées',cond:()=>(S.pvDone||0)>=8},
+  {id:'triptyque_20',emoji:'📑',name:'As du Triptyque',desc:'20 fiches maîtrisées',cond:()=>{
+    const fromObj=Object.values(S.fiches||{}).filter(f=>f&&f.mastered).length;
+    const fromFs=(typeof FB!=='undefined'&&FB)?FB.filter(f=>S.fs[f.id]==='m').length:0;
+    return Math.max(fromObj,fromFs)>=20;
+  }},
+  {id:'triptyque_64',emoji:'📚',name:'Encyclopédie Pénale',desc:'64 fiches maîtrisées',cond:()=>{
+    const fromObj=Object.values(S.fiches||{}).filter(f=>f&&f.mastered).length;
+    const fromFs=(typeof FB!=='undefined'&&FB)?FB.filter(f=>S.fs[f.id]==='m').length:0;
+    return Math.max(fromObj,fromFs)>=64;
+  }},
+  {id:'streak_30',emoji:'🧱',name:'Discipline de Fer',desc:'Streak 30 jours',cond:()=>(S.user?.streak||0)>=30},
+  {id:'streak_60',emoji:'💎',name:'Infaillible',desc:'Streak 60 jours',cond:()=>(S.user?.streak||0)>=60},
+  {id:'exam_90',emoji:'🎓',name:'Prêt pour le Jury',desc:'Un examen blanc oral ≥ 90 %',cond:()=>(S.examHistory||[]).some(e=>e.scoreGlobal>=0.9)},
+  {id:'early_bird',emoji:'🐦',name:'Premier Arrivé',desc:'QDJ correcte avant 9 h',cond:()=>(S.earlyBirdCount||0)>=1},
+  {id:'oral_ready',emoji:'🎤',name:'Paré pour l\'Oral',desc:'3 examens blancs oraux ≥ 80 %',cond:()=>(S.examHistory||[]).filter(e=>e.scoreGlobal>=0.8).length>=3},
+  {id:'all_modules',emoji:'🗂️',name:'Programme Complet',desc:'14 modules oraux ≥ 80 %',cond:()=>{
+    const oral=S.oral||{};
+    const mods=Object.keys(oral).filter(k=>/^module_\d+$/.test(k));
+    if(mods.length<14)return false;
+    return mods.every(k=>{const m=oral[k];return m&&typeof m.rate==='number'&&m.rate>=0.8;});
+  }},
 ];
 
 const BADGES={
@@ -4821,7 +6146,6 @@ const QUALIF={
 };
 
 /* ─── UTILS ─── */
-function eh(s){if(s==null)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function haptic(p){if(!S.settings?.haptics)return;try{if(navigator.vibrate)navigator.vibrate(Array.isArray(p)?p:[p]);}catch(e){}}
 function computeMastery(cat){
   const pool=QB.filter(q=>q.cat===cat);if(!pool.length)return{mastery:0,total:0,done:0,due:0,ok:0};
@@ -4909,7 +6233,7 @@ async function handleSignup() {
   const name = document.getElementById('signup-name')?.value?.trim() || 'Officier';
   const email = document.getElementById('signup-email')?.value?.trim();
   const password = document.getElementById('signup-password')?.value;
-  const examDate = document.getElementById('signup-date')?.value || '2026-06';
+  const examDate = document.getElementById('signup-date')?.value || '2026-06-15';
   
   if (!email || !email.includes('@')) {
     showToast('Email invalide', 'err');
@@ -4977,7 +6301,7 @@ async function handleMagicLink() {
 function startOfflineMode() {
   const name = 'Officier';
   S.user.name = name;
-  S.user.examDate = '2026-06';
+  S.user.examDate = '2026-06-15';
   S.page = 'home';
   S._offlineMode = true;
   save();
@@ -5074,6 +6398,8 @@ function finishOnboarding(){
 
 /* ─── BOOT ─── */
 (async function boot(){
+  const vEl = document.getElementById('app-version-display');
+  if (vEl) vEl.textContent = APP_CONFIG?.APP_VERSION || 'v61';
   window.addEventListener('message', function(e) {
     if (!e.data) return;
     if (e.origin !== window.location.origin) return;
@@ -5088,6 +6414,8 @@ function finishOnboarding(){
     window.finishAuth(name);
   };
   loadState();initOffline();initFAB();
+  try{initExamenBlancDelegation();}catch(e){console.warn('initExamenBlancDelegation',e);}
+  try{initJourJDelegation();}catch(e){console.warn('initJourJDelegation',e);}
   if(!window._opjVisBound){
     window._opjVisBound=true;
     document.addEventListener('visibilitychange',()=>{
@@ -5481,14 +6809,11 @@ function confetti(intense=true){
     const flashId=S._missionFlashId;
     S._missionFlashId=null;
     const done=missions.filter(m=>missionProgress(m).done).length;
-    const examDate=S.user?.examDate?new Date(S.user.examDate+'-01'):null;
-    const daysLeft=examDate?Math.max(0,Math.ceil((examDate-Date.now())/86400000)):null;
+    const daysLeft=(S.user?.examDate&&typeof daysUntilExam==='function')?daysUntilExam(S.user.examDate):null;
     let phaseBanner='';
     if(daysLeft!==null){
-      let phaseIcon='🎯',phaseLbl='BASES',phaseTxt='Construis tes fondamentaux';
-      if(daysLeft<=7){phaseIcon='🔥';phaseLbl='SPRINT';phaseTxt='Sprint final — tout réviser !';}
-      else if(daysLeft<=21){phaseIcon='⚡';phaseLbl='INTENSIF';phaseTxt='Phase intensive — accélère !';}
-      else if(daysLeft<=60){phaseIcon='📚';phaseLbl='RÉVISION';phaseTxt='Consolide tes acquis';}
+      const phInf=(typeof examPhaseLabel==='function')?examPhaseLabel(daysLeft):{icon:'🎯',lbl:'BASES',txt:'Construis tes fondamentaux'};
+      const phaseIcon=phInf.icon,phaseLbl=phInf.lbl,phaseTxt=phInf.txt;
       phaseBanner=`<div class="phase-banner">
         <div class="phase-icon">${phaseIcon}</div>
         <div class="phase-inf"><div class="phase-lbl">${phaseLbl}</div><div class="phase-txt">${phaseTxt}</div></div>
@@ -5599,8 +6924,7 @@ function confetti(intense=true){
   function renderStudyPlan(){
     const el=document.getElementById('patch-studyplan');
     if(!el||!window.S||!window.QB)return;
-    const examDate=S.user?.examDate?new Date(S.user.examDate+'-01'):null;
-    const daysLeft=examDate?Math.max(0,Math.ceil((examDate-Date.now())/86400000)):null;
+    const daysLeft=(S.user?.examDate&&typeof daysUntilExam==='function')?daysUntilExam(S.user.examDate):null;
     const ps=S.placementDone&&S.placementScore?S.placementScore:{};
     const themes=THEME_DEF.map(t=>{
       const m=computeMastery(t.cat);if(!m.total)return null;
@@ -5612,10 +6936,9 @@ function confetti(intense=true){
       return scoreA-scoreB;
     });
     let phaseIcon='🎯',phaseLbl='BASES',phaseTxt='Construis tes fondamentaux';
-    if(daysLeft!==null){
-      if(daysLeft<=7){phaseIcon='🔥';phaseLbl='SPRINT';phaseTxt='Sprint final — tout réviser !';}
-      else if(daysLeft<=21){phaseIcon='⚡';phaseLbl='INTENSIF';phaseTxt='Phase intensive — accélère !';}
-      else if(daysLeft<=60){phaseIcon='📚';phaseLbl='RÉVISION';phaseTxt='Consolide tes acquis';}
+    if(daysLeft!==null&&typeof examPhaseLabel==='function'){
+      const phInf=examPhaseLabel(daysLeft);
+      phaseIcon=phInf.icon;phaseLbl=phInf.lbl;phaseTxt=phInf.txt;
     }
     el.innerHTML=`
       <div class="sp-header">📊 Plan d'étude personnalisé</div>
@@ -5669,10 +6992,10 @@ function confetti(intense=true){
   /* ONBOARDING */
   const ONB_STEPS=[
     {icon:'👮',title:'Bienvenue dans OPJ Elite',desc:'La préparation la plus complète et gamifiée pour réussir l\'examen d\'Officier de Police Judiciaire.'},
-    {icon:'📅',title:'Définis ta date d\'examen',desc:'L\'app adapte ton plan d\'étude selon le temps restant.',
-     input:`<div class="inp-g mb4"><label class="inp-lbl">Mois de l'examen</label><input type="month" class="inp" id="onb2-date" min="${new Date().toISOString().slice(0,7)}" style="font-size:15px"></div>`},
-    {icon:'🎯',title:'13 chapitres complets',desc:'GAV, Flagrance, Perquisitions, Commission Rogatoire, Infractions, Libertés publiques… tout le programme officiel OPJ.'},
-    {icon:'🏆',title:'Monte en grade !',desc:'De Gardien de la Paix à Officier de Police Judiciaire — gagne des XP, monte en grade et débloque des badges.'},
+    {icon:'📅',title:'Définis ta date d\'examen',desc:'L\'app adapte ton plan d\'étude et le compte à rebours au jour J.',
+     input:`<div class="inp-g mb4"><label class="inp-lbl">Date de l'examen</label><input type="date" class="inp" id="onb2-date" min="${new Date().toISOString().slice(0,10)}" value="2026-06-15" style="font-size:15px"></div>`},
+    {icon:'🎯',title:'15 chapitres complets',desc:'GAV, Flagrance, Perquisitions, Commission Rogatoire, Infractions, Libertés publiques… tout le programme officiel OPJ.'},
+    {icon:'🏆',title:'Monte en grade !',desc:'De Gardien de la Paix jusqu\'à l\'OPJ en juridiction spécialisée — gagne des XP et débloque des badges.'},
   ];
   let onb2Idx=0;
 

@@ -45,9 +45,20 @@ const FSRS = {
        avant l'examen, pour garantir une révision avant le jour J */
     if (window.S?.user?.examDate) {
       try {
-        const exam     = new Date(window.S.user.examDate + '-01');
-        const daysLeft = Math.max(1, Math.ceil((exam - Date.now()) / 86400000));
-        c.interval     = Math.min(c.interval, Math.max(1, Math.floor(daysLeft / 2)));
+        const raw = String(window.S.user.examDate).trim();
+        const exam = /^\d{4}-\d{2}-\d{2}$/.test(raw)
+          ? new Date(raw + 'T12:00:00')
+          : /^\d{4}-\d{2}$/.test(raw)
+            ? new Date(raw + '-01T12:00:00')
+            : null;
+        if (exam && !isNaN(exam.getTime())) {
+          const dayMs = 86400000;
+          const t0 = new Date();
+          const startToday = new Date(t0.getFullYear(), t0.getMonth(), t0.getDate()).getTime();
+          const startExam = new Date(exam.getFullYear(), exam.getMonth(), exam.getDate()).getTime();
+          const daysLeft = Math.max(1, Math.ceil((startExam - startToday) / dayMs));
+          c.interval = Math.min(c.interval, Math.max(1, Math.floor(daysLeft / 2)));
+        }
       } catch (_) {}
     }
 
@@ -76,6 +87,22 @@ const FSRS = {
     const due   = bank.filter(q => FSRS.isDue(cards[q.id])).length;
     return { total, seen, ok, due,
              masteryPct: seen > 0 ? Math.round(ok / seen * 100) : 0 };
+  },
+
+  reviewFlashcard(id, mastered) {
+    if (!window.S || !id) return;
+    if (!window.S.flashFsrs) window.S.flashFsrs = {};
+    const prev = window.S.flashFsrs[id] || FSRS.newCard();
+    window.S.flashFsrs[id] = FSRS.review(prev, !!mastered);
+  },
+
+  getDueFlashcards(flashMap) {
+    const bank = window.FB || [];
+    if (!bank.length) return [];
+    const map = flashMap !== undefined && flashMap !== null
+      ? flashMap
+      : (window.S?.flashFsrs || {});
+    return bank.filter(f => FSRS.isDue(map[f.id]));
   }
 };
 
