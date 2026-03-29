@@ -1,10 +1,10 @@
 /* ═══════════════════════════════════════════════════════
-   OPJ ELITE — Service Worker v77
+   OPJ ELITE — Service Worker v78
    Chemins relatifs pour GitHub Pages (sous-dossier).
    Toutes les URLs sont résolues via self.registration.scope.
    ═══════════════════════════════════════════════════════ */
 
-const CACHE = 'opj-v77';
+const CACHE = 'opj-v78';
 
 const STATIC = [
   './',
