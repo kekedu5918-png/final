@@ -376,10 +376,10 @@ lessons:[
 
 {id:'ch6',num:'06',title:'Infractions contre les Personnes',sub:'Homicide · Violences · Viol · Séquestration',color:'#ef4444',bg:'rgba(239,68,68,.1)',icon:'🩸',
 lessons:[
- {id:'L601',em:'⚖️',name:'Atteintes à la vie',ref:'Art. 221-1 à 221-6 CP',xp:20,
+ {id:'L601',em:'⚖️',name:'Atteintes à la vie',ref:'Art. 221-1 à 221-6 et 221-18 à 221-20 CP',xp:20,
  intro:'Les atteintes à la vie forment le cœur du droit pénal spécial. Distinguer meurtre, assassinat, homicide involontaire et violences mortelles est essentiel pour une qualification juste.',
  secs:[
- {t:'Tableau comparatif',table:{th:['Infraction','Article','Peine','Élément moral'],rows:[['Meurtre','221-1 CP','30 ans RC','Intention de tuer (animus necandi)'],['Assassinat','221-3 CP','Perpétuité','Meurtre + PRÉMÉDITATION'],['Empoisonnement','221-5 CP','30 ans RC','Connaissance + intention + substance mortifère'],['Homicide involontaire','221-6 CP','3 ans / 45k€','FAUTE d\'imprudence (sans intention)'],['Violences mortelles','222-7 CP','15 ans RC','Intention de BLESSER (pas de tuer)'],['Non-assistance','223-6 al.2 CP','5 ans / 75k€','Abstention volontaire']]}},
+ {t:'Tableau comparatif',table:{th:['Infraction','Article','Peine','Élément moral'],rows:[['Meurtre','221-1 CP','30 ans RC','Intention de tuer (animus necandi)'],['Assassinat','221-3 CP','Perpétuité','Meurtre + PRÉMÉDITATION'],['Empoisonnement','221-5 CP','30 ans RC','Connaissance + intention + substance mortifère'],['Homicide involontaire','221-6 CP','3 ans / 45k€','FAUTE d\'imprudence (sans intention)'],['Homicide routier','221-18 CP','Qualification dédiée','Faits routiers avec circonstances prévues par la loi'],['Blessures routières','221-19 / 221-20 CP','Qualification dédiée','Faits routiers selon ITT et circonstances prévues par la loi'],['Violences mortelles','222-7 CP','15 ans RC','Intention de BLESSER (pas de tuer)'],['Non-assistance','223-6 al.2 CP','5 ans / 75k€','Abstention volontaire']]}},
  {t:'Préméditation (art. 132-72 CP)',items:[' Définition : dessein formé AVANT l\'action',' Distinction : guet-apens = attente (pas nécessairement prémédité)',' Effet : meurtre → assassinat (perpétuité)']},
  ],
  traps:['222-7 (violences mortelles) ≠ 221-1 (meurtre). Critère : a-t-on VOULU tuer ?','Homicide involontaire : PAS d\'intention de blesser même — faute seulement'],
@@ -388,19 +388,19 @@ lessons:[
  intro:'L\'échelle pénale des violences dépend du résultat (ITT) et des aggravantes. Les atteintes sexuelles se distinguent selon la présence ou non d\'une pénétration.',
  secs:[
  {t:'Échelle des violences selon ITT',table:{th:['Résultat','Article','Nature','Peine base'],rows:[['Sans ITT (gifle)','R624-1 CP','Contravention','3 750 €'],['ITT ≤ 8 jours','R625-1 CP','Contravention','1 500 €'],['ITT > 8 jours','222-11 CP','Délit','3 ans / 45k€'],['Mutilation/infirmité','222-9 CP','Crime','10 ans RC'],['Mort sans intention','222-7 CP','Crime','15 ans RC']]}},
- {t:'Atteintes sexuelles — critère clé',items:[' VIOL (222-23 CP) : pénétration sexuelle OU acte bucco-génital — 15 ans RC ',' Agression sexuelle (222-22 CP) : acte sexuel SANS pénétration — 7 ans + 100k€ ',' Critère unique : la PÉNÉTRATION fait basculer de délit à crime','Aggravant mineur < 15 ans : viol → 20 ans RC / Agression → 10 ans']},
+ {t:'Atteintes sexuelles — critère clé',items:[' VIOL (222-23 CP) : pénétration sexuelle, acte bucco-génital OU bucco-anal, en l\'absence de consentement — 15 ans RC ',' Agression sexuelle (222-22 CP) : acte sexuel SANS pénétration, en l\'absence de consentement — 7 ans + 100k€ ',' Critère unique : la PÉNÉTRATION fait basculer de délit à crime','Aggravant mineur < 15 ans : viol → 20 ans RC / Agression → 10 ans']},
  ],
  traps:['ITT = durée d\'incapacité totale de travail. Fixée par le médecin légiste.','Viol = crime (15 ans RC). Agression sexuelle = délit (7 ans). Un seul critère : la pénétration.'],
  keys:['ITT > 8j = 222-11 délit. ITT ≤ 8j = contravention','Viol vs agression : critère = PÉNÉTRATION']},
  {id:'L603',em:'🔴',name:'Viol & agressions sexuelles approfondies',ref:'Art. 222-22 à 222-30 CP',xp:15,
  intro:'Le critère de la pénétration distingue crime et délit ; les qualifications aggravées suivent l\'âge de la victime et les violences.',
  secs:[
- {t:'Viol (222-23)',items:[' Tout acte de pénétration sexuelle ou tout acte bucco-génital commis avec violence, contrainte, menace ou surprise = crime ',' Peines aggravées si mineur < 15 ans, lien d\'autorité, etc.']},
- {t:'Agression sexuelle (222-22)',items:[' Atteinte sexuelle sans pénétration sous violence/contrainte/menace/surprise = délit ',' Échelle des peines selon circonstances']},
+ {t:'Viol (222-23)',items:[' Tout acte de pénétration sexuelle, acte bucco-génital ou bucco-anal commis avec violence, contrainte, menace ou surprise, en l\'absence de consentement = crime ',' Peines aggravées si mineur < 15 ans, lien d\'autorité, etc.']},
+ {t:'Agression sexuelle (222-22)',items:[' Atteinte sexuelle sans pénétration, en l\'absence de consentement, sous violence/contrainte/menace/surprise = délit ',' Les actes bucco-anaux relèvent du viol et non de l\'agression sexuelle ',' Échelle des peines selon circonstances']},
  {t:'Autres figures',items:[' Atteintes sexuelles sur mineur (titre II bis), outrage sexuel, exhibition — ne pas les confondre dans le PV']},
  ],
  traps:['Le débat sur pénétration vs autre contact est souvent éliminatoire : cadrer la qualification sur les constations médicales et les déclarations.'],
- keys:['222-23 = pénétration ou acte bucco-génital = crime','222-22 = sans pénétration = délit']},
+ keys:['222-23 = pénétration ou acte bucco-génital / bucco-anal = crime','222-22 = sans pénétration = délit','Le consentement est central dans la qualification']},
  {id:'L604',em:'⚠️',name:'Harcèlement & mise en danger',ref:'Art. 222-33-2, 223-1 CP',xp:12,
  intro:'Les atteintes psychologiques et la mise en danger d\'autrui complètent l\'arsenal des infractions « personnes » fréquentes au quotidien.',
  secs:[
@@ -619,15 +619,15 @@ lessons:[
  ],
  traps:['Confondre réglementation administrative des armes et légitime défense pénale — deux expertises distinctes.'],
  keys:['L. 311-1 CSI : champs des catégories','Proportionnalité + nécessité absolue pour usage armes']},
- {id:'L1105',em:'🚧',name:'Enquête après accident de circulation',ref:'Art. 221-6, 222-19 CP · L234-1 C.route',xp:14,
+{id:'L1105',em:'🚧',name:'Enquête après accident de circulation',ref:'Art. 221-6, 221-18 à 221-20 CP · L234-1 C.route',xp:14,
  intro:'L\'accident de la route avec blessés ou décès engage un traitement technique (constatations) et une réflexion qualificative (délictuelle ou contraventionnelle).',
  secs:[
  {t:'Investigations',items:[' Transport sur les lieux et constatations détaillées : schéma, photographies, mesures de freinage, gabarits',' Auditions des témoins et des conducteurs',' Réquisitions : médecin légiste, expert automobile, analyses d\'alcool ou de stupéfiants']},
  {t:'PV d\'accident',items:[' Circonstances : météo, état de la chaussée, signalisation, visibilité, positions finales des véhicules, traces de pneus, débris']},
- {t:'Qualifications selon les conséquences',items:[' Blessures involontaires : art. 222-19 / 222-20 CP selon gravité et circonstances',' Homicide involontaire : art. 221-6 CP',' Circonstances aggravantes fréquentes : état alcoolique (L234-1 Code de la route), stupéfiants, excès de vitesse manifeste']},
+ {t:'Qualifications selon les conséquences',items:[' Homicide involontaire hors cadre routier : art. 221-6 CP',' Homicide routier : art. 221-18 CP',' Blessures routières : art. 221-19 / 221-20 CP',' Vérifier les circonstances prévues par les textes spéciaux (alcool, stupéfiants, vitesses, etc.) sans transposer automatiquement les anciens articles supprimés']},
  ],
  traps:['Qualifier trop vite « simple accident » sans étayer la faute d\'imprudence ou les produits stupéfiants.'],
- keys:['221-6 : homicide involontaire','222-19 s. : blessures','L234-1 : alcool au volant aggravant']},
+ keys:['221-6 : homicide involontaire (hors cadre routier)','221-18 : homicide routier','221-19 / 221-20 : blessures routières','L234-1 : alcool au volant']},
 ]},
 
 /* â•â•â• CH12 — MESURES COERCITIVES â•â•â• */
